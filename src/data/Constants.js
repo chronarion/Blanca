@@ -14,26 +14,27 @@ export const TILE_COLORS = {
 };
 
 export const PIECE_COLORS = {
-    player: '#ffffff',
-    playerOutline: '#333333',
-    enemy: '#1a1a2e',
-    enemyOutline: '#666666',
+    player: '#f0e6d0',
+    playerOutline: '#6a5d4a',
+    enemy: '#2a2238',
+    enemyOutline: '#8a6070',
 };
 
 export const UI_COLORS = {
-    bg: '#0a0a0f',
-    bgLight: '#1a1a2e',
-    panel: '#16213e',
-    panelBorder: '#0f3460',
-    text: '#e0e0e0',
-    textDim: '#888888',
-    accent: '#e94560',
-    accentGlow: '#ff6b81',
-    gold: '#ffd700',
-    success: '#4caf50',
-    warning: '#ff9800',
-    danger: '#f44336',
-    info: '#2196f3',
+    bg: '#09090d',
+    bgLight: '#13131d',
+    panel: '#161622',
+    panelBorder: '#2a2540',
+    text: '#e0d8c8',
+    textDim: '#6a6272',
+    accent: '#c9a84e',
+    accentGlow: '#e0c060',
+    accentAlt: '#c04050',
+    gold: '#c9a84e',
+    success: '#5a9e6a',
+    warning: '#d0a040',
+    danger: '#c04050',
+    info: '#5880b8',
 };
 
 export const PIECE_TYPES = {

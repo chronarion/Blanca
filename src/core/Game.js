@@ -77,9 +77,9 @@ export class Game {
 
         this.eventBus.on('combatFinished', (data) => {
             if (data.victory) {
-                this.runManager.onBattleWon(data);
+                const rewards = this.runManager.onBattleWon(data);
                 this.saveManager.save(this.runManager.serialize());
-                this.stateMachine.change('map');
+                this.stateMachine.change('map', { goldGained: data.goldEarned || 0 });
             } else {
                 // onBattleLost emits 'runEnded' which handles the state change
                 this.runManager.onBattleLost();

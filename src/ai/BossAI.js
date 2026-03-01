@@ -3,6 +3,7 @@ import { Evaluator } from './Evaluator.js';
 import { MovementPattern } from '../pieces/MovementPattern.js';
 import { Piece } from '../pieces/Piece.js';
 import { PIECE_VALUES } from '../data/PieceData.js';
+import { AIBehaviors } from './AIBehaviors.js';
 
 export class BossAI {
     constructor(board, eventBus, bossData) {
@@ -68,7 +69,7 @@ export class BossAI {
 
     getBestMove() {
         // Boss uses deeper search than regular AI
-        const depth = this.currentPhase >= 2 ? 3 : 2;
+        const depth = this.currentPhase >= 2 ? 4 : 3;
 
         // Use minimax for smarter play
         const result = Evaluator.minimax(this.board, depth, true, TEAMS.ENEMY);
@@ -77,7 +78,7 @@ export class BossAI {
             return result;
         }
 
-        // Fallback: basic evaluation
+        // Fallback: heuristic evaluation
         return this.getFallbackMove();
     }
 
@@ -92,24 +93,15 @@ export class BossAI {
                 .filter(m => m.type !== 'threat');
 
             for (const move of moves) {
-                let score = Math.random() * 5;
-
-                if (move.type === 'capture') {
-                    const target = this.board.getPieceAt(move.col, move.row);
-                    if (target) score += PIECE_VALUES[target.type] * 100;
-                }
-
-                const playerKing = this.board.findKing(TEAMS.PLAYER);
-                if (playerKing) {
-                    const dist = Math.abs(move.col - playerKing.col) + Math.abs(move.row - playerKing.row);
-                    score += (20 - dist) * 3;
-                }
+                let score = AIBehaviors.evaluateMove(
+                    piece, move, this.board, TEAMS.ENEMY, TEAMS.PLAYER
+                );
 
                 // Boss protects its own king more
                 const ownKing = this.board.findKing(TEAMS.ENEMY);
                 if (ownKing && piece.type !== PIECE_TYPES.KING) {
                     const distToOwnKing = Math.abs(move.col - ownKing.col) + Math.abs(move.row - ownKing.row);
-                    if (distToOwnKing <= 2) score += 10;
+                    if (distToOwnKing <= 2) score += 15;
                 }
 
                 if (score > bestScore) {

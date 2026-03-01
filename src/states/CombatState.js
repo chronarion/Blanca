@@ -9,6 +9,7 @@ import { PieceRenderer } from '../render/PieceRenderer.js';
 import { BossAI } from '../ai/BossAI.js';
 import { PIECE_TYPES, TEAMS, UI_COLORS, ANIMATION } from '../data/Constants.js';
 import { PIECE_VALUES } from '../data/PieceData.js';
+import { UITheme } from '../ui/UITheme.js';
 
 export class CombatState {
     constructor() {
@@ -48,6 +49,14 @@ export class CombatState {
         this.bossAI = null;
         this.bossPhaseMessage = '';
         this.bossPhaseTimer = 0;
+
+        // Deployment phase
+        this.deployPhase = false;
+        this.deployAvailable = true;
+        this.deploySelectedPiece = null;
+        this.deployHoverReady = false;
+        this.deployHoverEnter = false;
+        this.deployTime = 0;
     }
 
     enter(params = {}) {
@@ -130,6 +139,11 @@ export class CombatState {
             }
         }
 
+        this.deployPhase = false;
+        this.deployAvailable = true;
+        this.deploySelectedPiece = null;
+        this.deployHoverReady = false;
+        this.deployHoverEnter = false;
         this.showStatus('Your move');
         this.bindInput();
     }
@@ -189,17 +203,32 @@ export class CombatState {
     handleClick(data) {
         if (this.animatingMove) return;
 
-        if (this.pendingPromotion) {
-            this.handlePromotionClick(data);
-            return;
-        }
-
         if (this.gameOver) {
             this.onCombatFinished();
             return;
         }
 
+        if (this.deployPhase) {
+            this.handleDeployClick(data);
+            return;
+        }
+
+        if (this.pendingPromotion) {
+            this.handlePromotionClick(data);
+            return;
+        }
+
         if (!this.combatManager.turnManager.isPlayerTurn) return;
+
+        // Check deploy enter button
+        if (this.deployAvailable) {
+            const dbtn = this.getDeployEnterButton();
+            if (data.x >= dbtn.x && data.x <= dbtn.x + dbtn.w &&
+                data.y >= dbtn.y && data.y <= dbtn.y + dbtn.h) {
+                this.enterDeploy();
+                return;
+            }
+        }
 
         const pos = this.boardRenderer.screenToBoard(data.x, data.y);
         if (!pos) return;
@@ -228,9 +257,34 @@ export class CombatState {
     handleMouseMove(data) {
         if (!this.boardRenderer) return;
         this.boardRenderer.hoverTile = this.boardRenderer.screenToBoard(data.x, data.y);
+
+        if (this.deployPhase) {
+            const btn = this.getReadyButton();
+            this.deployHoverReady = (
+                data.x >= btn.x && data.x <= btn.x + btn.w &&
+                data.y >= btn.y && data.y <= btn.y + btn.h
+            );
+        }
+
+        if (this.deployAvailable && !this.deployPhase) {
+            const dbtn = this.getDeployEnterButton();
+            this.deployHoverEnter = (
+                data.x >= dbtn.x && data.x <= dbtn.x + dbtn.w &&
+                data.y >= dbtn.y && data.y <= dbtn.y + dbtn.h
+            );
+        }
     }
 
     handleKey(data) {
+        if (this.deployPhase) {
+            if (data.code === 'Enter' || data.code === 'Space') {
+                this.finishDeploy();
+            } else if (data.code === 'Escape') {
+                this.deploySelectedPiece = null;
+                this.boardRenderer.selectedPiece = null;
+            }
+            return;
+        }
         if (data.code === 'Escape') {
             if (this.pendingPromotion) return;
             if (this.selectedPiece) {
@@ -238,6 +292,10 @@ export class CombatState {
             } else if (this.stateMachine.states.has('pause')) {
                 this.stateMachine.push('pause');
             }
+        }
+        if ((data.code === 'KeyD') && this.deployAvailable && !this.deployPhase &&
+            !this.animatingMove && this.combatManager.turnManager.isPlayerTurn) {
+            this.enterDeploy();
         }
     }
 
@@ -255,7 +313,300 @@ export class CombatState {
         this.boardRenderer.legalMoves = [];
     }
 
+    // --- Deployment phase ---
+
+    getDeployRows() {
+        // Player's bottom two rows
+        return [this.board.rows - 1, this.board.rows - 2];
+    }
+
+    isDeployZone(col, row) {
+        const rows = this.getDeployRows();
+        return rows.includes(row) && col >= 0 && col < this.board.cols;
+    }
+
+    handleDeployClick(data) {
+        // Check Ready button
+        const btn = this.getReadyButton();
+        if (data.x >= btn.x && data.x <= btn.x + btn.w &&
+            data.y >= btn.y && data.y <= btn.y + btn.h) {
+            this.finishDeploy();
+            return;
+        }
+
+        const pos = this.boardRenderer.screenToBoard(data.x, data.y);
+        if (!pos) return;
+
+        const clickedPiece = this.board.getPieceAt(pos.col, pos.row);
+
+        if (this.deploySelectedPiece) {
+            // Click on same piece: deselect
+            if (clickedPiece === this.deploySelectedPiece) {
+                this.deploySelectedPiece = null;
+                this.boardRenderer.selectedPiece = null;
+                return;
+            }
+
+            // Click on another player piece: swap
+            if (clickedPiece && clickedPiece.team === TEAMS.PLAYER) {
+                this.swapPiecePositions(this.deploySelectedPiece, clickedPiece);
+                this.deploySelectedPiece = null;
+                this.boardRenderer.selectedPiece = null;
+                return;
+            }
+
+            // Click on empty tile in deploy zone: move piece there
+            if (!clickedPiece && this.isDeployZone(pos.col, pos.row)) {
+                const tile = this.board.getTile(pos.col, pos.row);
+                if (tile && tile.isEmpty() && tile.isPassable()) {
+                    const fromTile = this.board.getTile(this.deploySelectedPiece.col, this.deploySelectedPiece.row);
+                    fromTile.removePiece();
+                    tile.setPiece(this.deploySelectedPiece);
+                    this.deploySelectedPiece = null;
+                    this.boardRenderer.selectedPiece = null;
+                    return;
+                }
+            }
+
+            // Click elsewhere: deselect
+            this.deploySelectedPiece = null;
+            this.boardRenderer.selectedPiece = null;
+        } else {
+            // No selection: pick a player piece
+            if (clickedPiece && clickedPiece.team === TEAMS.PLAYER) {
+                this.deploySelectedPiece = clickedPiece;
+                this.boardRenderer.selectedPiece = clickedPiece;
+            }
+        }
+    }
+
+    swapPiecePositions(a, b) {
+        const tileA = this.board.getTile(a.col, a.row);
+        const tileB = this.board.getTile(b.col, b.row);
+        tileA.removePiece();
+        tileB.removePiece();
+        tileA.setPiece(b);
+        tileB.setPiece(a);
+    }
+
+    getReadyButton() {
+        const ts = this.boardRenderer.tileSize;
+        const bw = this.board.cols * ts;
+        const bx = this.boardRenderer.offsetX;
+        const by = this.boardRenderer.offsetY + this.board.rows * ts;
+        return {
+            x: bx + bw / 2 - 70,
+            y: by + 22,
+            w: 140,
+            h: 40,
+        };
+    }
+
+    getDeployEnterButton() {
+        const w = this.renderer.width;
+        return { x: w - 90, y: 6, w: 74, h: 26 };
+    }
+
+    enterDeploy() {
+        this.deployPhase = true;
+        this.deploySelectedPiece = null;
+        this.deployHoverReady = false;
+        this.deployTime = 0;
+        this.showStatus('Deploy your pieces');
+    }
+
+    finishDeploy() {
+        this.deployPhase = false;
+        this.deploySelectedPiece = null;
+        this.deployHoverReady = false;
+        this.boardRenderer.selectedPiece = null;
+        this.showStatus('Your move');
+    }
+
+    // Drawn inside the screen-shake transform, on top of the board tiles+pieces
+    drawDeployOverlay(ctx) {
+        const ts = this.boardRenderer.tileSize;
+        const ox = this.boardRenderer.offsetX;
+        const oy = this.boardRenderer.offsetY;
+        const bw = this.board.cols * ts;
+        const bh = this.board.rows * ts;
+        const deployRows = this.getDeployRows();
+        const deployTopRow = Math.min(...deployRows);
+
+        // --- Darken everything above the deploy zone ---
+        const dzY = oy + deployTopRow * ts;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillRect(ox, oy, bw, dzY - oy);
+
+        // --- Tint deploy zone with warm gold ---
+        const pulse = 0.04 + Math.sin(this.deployTime * 2.5) * 0.02;
+        ctx.fillStyle = `rgba(200, 168, 78, ${pulse})`;
+        ctx.fillRect(ox, dzY, bw, bh - (dzY - oy));
+
+        // --- Pulsing gold border around deploy zone ---
+        const borderAlpha = 0.35 + Math.sin(this.deployTime * 3) * 0.2;
+        ctx.save();
+        ctx.strokeStyle = `rgba(200, 168, 78, ${borderAlpha})`;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
+        ctx.strokeRect(ox + 1, dzY, bw - 2, bh - (dzY - oy) - 1);
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // --- "DEPLOY ZONE" label at the border ---
+        ctx.save();
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = `rgba(200, 168, 78, ${0.5 + Math.sin(this.deployTime * 3) * 0.2})`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('DEPLOY ZONE', ox + bw / 2, dzY - 4);
+        ctx.restore();
+
+        // --- Highlight empty deploy zone squares when a piece is selected ---
+        if (this.deploySelectedPiece) {
+            for (const row of deployRows) {
+                for (let col = 0; col < this.board.cols; col++) {
+                    const tile = this.board.getTile(col, row);
+                    if (tile && tile.isEmpty() && tile.isPassable()) {
+                        const pos = this.boardRenderer.boardToScreen(col, row);
+                        ctx.fillStyle = `rgba(200, 168, 78, ${0.08 + Math.sin(this.deployTime * 3) * 0.04})`;
+                        ctx.fillRect(pos.x, pos.y, ts, ts);
+                        // Small dot in center
+                        ctx.fillStyle = `rgba(200, 168, 78, 0.35)`;
+                        ctx.beginPath();
+                        ctx.arc(pos.x + ts / 2, pos.y + ts / 2, ts * 0.12, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // --- Gold corner brackets on each player piece ---
+        const playerPieces = this.board.getTeamPieces(TEAMS.PLAYER);
+        for (const piece of playerPieces) {
+            const pos = this.boardRenderer.boardToScreen(piece.col, piece.row);
+            const m = 3;
+            const s = 7;
+            const isSelected = piece === this.deploySelectedPiece;
+            ctx.strokeStyle = isSelected ? '#fff' : UI_COLORS.gold;
+            ctx.lineWidth = isSelected ? 2 : 1.5;
+            // top-left
+            ctx.beginPath();
+            ctx.moveTo(pos.x + m, pos.y + m + s);
+            ctx.lineTo(pos.x + m, pos.y + m);
+            ctx.lineTo(pos.x + m + s, pos.y + m);
+            ctx.stroke();
+            // top-right
+            ctx.beginPath();
+            ctx.moveTo(pos.x + ts - m - s, pos.y + m);
+            ctx.lineTo(pos.x + ts - m, pos.y + m);
+            ctx.lineTo(pos.x + ts - m, pos.y + m + s);
+            ctx.stroke();
+            // bottom-left
+            ctx.beginPath();
+            ctx.moveTo(pos.x + m, pos.y + ts - m - s);
+            ctx.lineTo(pos.x + m, pos.y + ts - m);
+            ctx.lineTo(pos.x + m + s, pos.y + ts - m);
+            ctx.stroke();
+            // bottom-right
+            ctx.beginPath();
+            ctx.moveTo(pos.x + ts - m - s, pos.y + ts - m);
+            ctx.lineTo(pos.x + ts - m, pos.y + ts - m);
+            ctx.lineTo(pos.x + ts - m, pos.y + ts - m - s);
+            ctx.stroke();
+
+            // Selected piece: full glowing border
+            if (isSelected) {
+                ctx.save();
+                ctx.shadowColor = UI_COLORS.gold;
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = UI_COLORS.gold;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(pos.x + 1, pos.y + 1, ts - 2, ts - 2);
+                ctx.restore();
+            }
+        }
+    }
+
+    // Drawn outside screen-shake, on top of the HUD
+    drawDeployChrome(ctx) {
+        const w = this.renderer.width;
+        const h = this.renderer.height;
+        const ts = this.boardRenderer.tileSize;
+        const ox = this.boardRenderer.offsetX;
+        const oy = this.boardRenderer.offsetY;
+        const bw = this.board.cols * ts;
+        const bh = this.board.rows * ts;
+
+        // --- Top banner ---
+        const bannerH = 48;
+        const bannerGrad = ctx.createLinearGradient(0, 0, 0, bannerH);
+        bannerGrad.addColorStop(0, 'rgba(40, 32, 10, 0.95)');
+        bannerGrad.addColorStop(0.7, 'rgba(40, 32, 10, 0.85)');
+        bannerGrad.addColorStop(1, 'rgba(40, 32, 10, 0)');
+        ctx.fillStyle = bannerGrad;
+        ctx.fillRect(0, 0, w, bannerH);
+
+        // Gold accent line at bottom of banner
+        const lineAlpha = 0.4 + Math.sin(this.deployTime * 3) * 0.15;
+        ctx.strokeStyle = `rgba(200, 168, 78, ${lineAlpha})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.15, bannerH - 2);
+        ctx.lineTo(w * 0.85, bannerH - 2);
+        ctx.stroke();
+
+        // "DEPLOY PHASE" title
+        ctx.save();
+        ctx.font = `bold 20px Georgia, 'Times New Roman', serif`;
+        ctx.fillStyle = UI_COLORS.gold;
+        ctx.shadowColor = 'rgba(200, 168, 78, 0.5)';
+        ctx.shadowBlur = 12;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('DEPLOY PHASE', w / 2, 22);
+        ctx.restore();
+
+        // --- Instruction text below board ---
+        const instrY = oy + bh + 6;
+        ctx.font = '11px monospace';
+        ctx.fillStyle = UI_COLORS.textDim;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        if (this.deploySelectedPiece) {
+            ctx.fillStyle = UI_COLORS.gold;
+            ctx.fillText('Click another piece to swap, or click empty to cancel', w / 2, instrY);
+        } else {
+            ctx.fillText('Click a piece to select, then click another to swap positions', w / 2, instrY);
+        }
+
+        // --- Ready button (larger, more prominent) ---
+        const btn = this.getReadyButton();
+        // Glow behind button
+        ctx.save();
+        ctx.shadowColor = UI_COLORS.gold;
+        ctx.shadowBlur = this.deployHoverReady ? 16 : 8;
+        ctx.beginPath();
+        UITheme.roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6);
+        ctx.fillStyle = 'rgba(0,0,0,0.01)';
+        ctx.fill();
+        ctx.restore();
+
+        UITheme.drawButton(ctx, btn.x, btn.y, btn.w, btn.h, 'READY', this.deployHoverReady, {
+            fontSize: 15,
+            hoverColor: 'rgba(200, 168, 78, 0.3)',
+        });
+
+        // Keyboard hint
+        ctx.font = '9px monospace';
+        ctx.fillStyle = UI_COLORS.textDim;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Enter / Space', btn.x + btn.w / 2, btn.y + btn.h + 4);
+    }
+
     startMoveAnimation(piece, move) {
+        this.deployAvailable = false;
         this.deselect();
         this.animatingMove = {
             piece,
@@ -264,11 +615,12 @@ export class CombatState {
             progress: 0,
             duration: ANIMATION.moveDuration,
             moveType: move.type,
+            moveData: move,
         };
     }
 
     finishMove(anim) {
-        const result = this.combatManager.executeMove(anim.piece, anim.toCol, anim.toRow);
+        const result = this.combatManager.executeMove(anim.piece, anim.toCol, anim.toRow, anim.moveData);
         if (!result.success) return;
 
         this.boardRenderer.lastMove = { from: result.from, to: result.to };
@@ -464,6 +816,7 @@ export class CombatState {
     }
 
     update(dt) {
+        if (this.deployPhase) this.deployTime += dt;
         if (this.statusTimer > 0) this.statusTimer -= dt;
         if (this.bossPhaseTimer > 0) this.bossPhaseTimer -= dt;
 
@@ -515,11 +868,14 @@ export class CombatState {
             PieceRenderer.draw(ctx, anim.piece, x, y, this.boardRenderer.tileSize);
         }
 
+        if (this.deployPhase) this.drawDeployOverlay(ctx);
+
         ctx.restore();
 
         this.floatingText.render(ctx);
         this.drawUI(ctx);
 
+        if (this.deployPhase) this.drawDeployChrome(ctx);
         if (this.bossPhaseTimer > 0) this.drawBossPhase(ctx);
         if (this.pendingPromotion) this.drawPromotionUI(ctx);
         if (this.gameOver) this.drawGameOverOverlay(ctx);
@@ -529,131 +885,170 @@ export class CombatState {
         const tm = this.combatManager ? this.combatManager.turnManager : null;
         const turnNum = tm ? Math.floor(tm.turnNumber / 2) + 1 : 1;
         const isPlayerTurn = tm ? tm.isPlayerTurn : true;
+        const w = this.renderer.width;
 
-        // Top bar
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, this.renderer.width, 44);
+        // Top bar with gradient
+        const barGrad = ctx.createLinearGradient(0, 0, 0, 40);
+        barGrad.addColorStop(0, 'rgba(9,9,13,0.85)');
+        barGrad.addColorStop(1, 'rgba(9,9,13,0)');
+        ctx.fillStyle = barGrad;
+        ctx.fillRect(0, 0, w, 40);
 
-        ctx.font = '14px monospace';
+        // Turn number
+        ctx.font = '12px monospace';
         ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`Turn ${turnNum}`, 16, 22);
+        ctx.fillText(`Turn ${turnNum}`, 16, 20);
 
         // Turn indicator
-        ctx.fillStyle = isPlayerTurn ? UI_COLORS.success : UI_COLORS.danger;
-        ctx.font = 'bold 14px monospace';
+        ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(isPlayerTurn ? 'YOUR TURN' : 'ENEMY TURN', this.renderer.width / 2, 22);
+        if (this.deployPhase) {
+            // Banner drawn by drawDeployChrome
+        } else if (isPlayerTurn) {
+            ctx.fillStyle = UI_COLORS.accent;
+            ctx.fillText('YOUR TURN', w / 2, 20);
+        } else {
+            ctx.fillStyle = UI_COLORS.danger;
+            ctx.fillText('ENEMY TURN', w / 2, 20);
+        }
 
         // Gold
         if (this.combatManager) {
             ctx.fillStyle = UI_COLORS.gold;
-            ctx.font = '14px monospace';
+            ctx.font = '12px monospace';
             ctx.textAlign = 'right';
-            ctx.fillText(`Gold: ${this.combatManager.goldEarned}`, this.renderer.width - 16, 22);
+            const goldX = (this.deployAvailable && !this.deployPhase) ? w - 100 : w - 16;
+            ctx.fillText(`${this.combatManager.goldEarned}g`, goldX, 20);
+        }
+
+        // Deploy enter button (shown when deploy is available but not active)
+        if (this.deployAvailable && !this.deployPhase && isPlayerTurn) {
+            const dbtn = this.getDeployEnterButton();
+            UITheme.drawButton(ctx, dbtn.x, dbtn.y, dbtn.w, dbtn.h, 'Deploy', this.deployHoverEnter, {
+                fontSize: 11,
+                hoverColor: 'rgba(200, 168, 78, 0.2)',
+            });
         }
 
         // Status message
         if (this.statusTimer > 0 && this.statusMessage) {
             const alpha = Math.min(1, this.statusTimer);
             ctx.globalAlpha = alpha;
-            ctx.font = 'bold 16px monospace';
+            ctx.font = 'bold 14px monospace';
             ctx.fillStyle = UI_COLORS.accent;
             ctx.textAlign = 'center';
-            ctx.fillText(this.statusMessage, this.renderer.width / 2, 62);
+            ctx.fillText(this.statusMessage, w / 2, 54);
             ctx.globalAlpha = 1;
         }
 
-        // Captured pieces
         this.drawCapturedPieces(ctx);
     }
 
     drawCapturedPieces(ctx) {
-        const size = 22;
-        const spacing = 24;
-        const y = this.renderer.height - 36;
+        const size = 20;
+        const spacing = 22;
+        const y = this.renderer.height - 32;
 
         if (this.capturedByPlayer.length > 0) {
-            ctx.font = '11px monospace';
+            ctx.font = '10px monospace';
             ctx.fillStyle = UI_COLORS.textDim;
             ctx.textAlign = 'left';
-            ctx.fillText('Captured:', 12, y - 4);
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Captured:', 12, y - 2);
             for (let i = 0; i < this.capturedByPlayer.length; i++) {
-                PieceRenderer.draw(ctx, this.capturedByPlayer[i], 12 + i * spacing, y, size);
+                PieceRenderer.draw(ctx, this.capturedByPlayer[i], 12 + i * spacing, y + 4, size);
             }
         }
     }
 
     drawPromotionUI(ctx) {
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0, 0, this.renderer.width, this.renderer.height);
 
-        ctx.font = 'bold 22px monospace';
-        ctx.fillStyle = UI_COLORS.text;
-        ctx.textAlign = 'center';
-        ctx.fillText('Choose Promotion', this.renderer.width / 2, this.renderer.height / 2 - 65);
+        const w = this.renderer.width;
+        const h = this.renderer.height;
+
+        UITheme.drawTitle(ctx, 'Promote', w / 2, h / 2 - 68, 24);
 
         const btnW = 70;
         const btnH = 70;
-        const gap = 10;
+        const gap = 12;
         const totalW = this.promotionChoices.length * (btnW + gap) - gap;
-        const startX = (this.renderer.width - totalW) / 2;
-        const y = this.renderer.height / 2 - btnH / 2;
+        const startX = (w - totalW) / 2;
+        const y = h / 2 - btnH / 2;
 
         for (let i = 0; i < this.promotionChoices.length; i++) {
             const bx = startX + i * (btnW + gap);
-            ctx.fillStyle = UI_COLORS.panel;
-            ctx.fillRect(bx, y, btnW, btnH);
-            ctx.strokeStyle = UI_COLORS.panelBorder;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(bx, y, btnW, btnH);
+            UITheme.drawPanel(ctx, bx, y, btnW, btnH, { radius: 6, shadow: false });
 
             const tempPiece = new Piece(this.promotionChoices[i], this.pendingPromotion.team);
-            PieceRenderer.draw(ctx, tempPiece, bx + 3, y + 3, btnW - 6);
+            PieceRenderer.draw(ctx, tempPiece, bx + 5, y + 5, btnW - 10);
 
             ctx.font = '10px monospace';
             ctx.fillStyle = UI_COLORS.textDim;
             ctx.textAlign = 'center';
-            ctx.fillText(this.promotionChoices[i], bx + btnW / 2, y + btnH + 14);
+            ctx.textBaseline = 'top';
+            ctx.fillText(this.promotionChoices[i], bx + btnW / 2, y + btnH + 8);
         }
     }
 
     drawBossPhase(ctx) {
         const alpha = Math.min(1, this.bossPhaseTimer * 0.8);
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, this.renderer.height / 2 - 30, this.renderer.width, 60);
-        ctx.font = 'bold 22px monospace';
+        const w = this.renderer.width;
+        const h = this.renderer.height;
+
+        const barGrad = ctx.createLinearGradient(0, h / 2 - 30, 0, h / 2 + 30);
+        barGrad.addColorStop(0, 'rgba(60,10,15,0.7)');
+        barGrad.addColorStop(0.5, 'rgba(60,10,15,0.9)');
+        barGrad.addColorStop(1, 'rgba(60,10,15,0.7)');
+        ctx.fillStyle = barGrad;
+        ctx.fillRect(0, h / 2 - 30, w, 60);
+
+        ctx.font = `bold 22px Georgia, serif`;
         ctx.fillStyle = UI_COLORS.danger;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(this.bossPhaseMessage, this.renderer.width / 2, this.renderer.height / 2);
+        ctx.fillText(this.bossPhaseMessage, w / 2, h / 2);
         ctx.globalAlpha = 1;
     }
 
     drawGameOverOverlay(ctx) {
-        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
         ctx.fillRect(0, 0, this.renderer.width, this.renderer.height);
 
+        const w = this.renderer.width;
+        const h = this.renderer.height;
         const isWin = this.winner === TEAMS.PLAYER;
 
-        ctx.font = 'bold 52px monospace';
-        ctx.fillStyle = isWin ? UI_COLORS.success : UI_COLORS.danger;
+        if (isWin) {
+            UITheme.drawTitle(ctx, 'VICTORY', w / 2, h / 2 - 50, 48);
+        } else {
+            ctx.save();
+            ctx.font = `bold 48px Georgia, 'Times New Roman', serif`;
+            ctx.fillStyle = UI_COLORS.danger;
+            ctx.shadowColor = 'rgba(192, 64, 80, 0.4)';
+            ctx.shadowBlur = 20;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('DEFEAT', w / 2, h / 2 - 50);
+            ctx.restore();
+        }
+
+        ctx.font = '15px monospace';
+        ctx.fillStyle = UI_COLORS.text;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(isWin ? 'VICTORY' : 'DEFEAT', this.renderer.width / 2, this.renderer.height / 2 - 50);
-
-        ctx.font = '18px monospace';
-        ctx.fillStyle = UI_COLORS.text;
         ctx.fillText(
             `Turns: ${Math.floor(this.turnCount / 2)}  |  Captured: ${this.capturedByPlayer.length}  |  Gold: ${this.combatManager ? this.combatManager.goldEarned : 0}`,
-            this.renderer.width / 2, this.renderer.height / 2 + 10
+            w / 2, h / 2 + 10
         );
 
-        ctx.font = '14px monospace';
+        ctx.font = '12px monospace';
         ctx.fillStyle = UI_COLORS.textDim;
-        ctx.fillText('Click to continue', this.renderer.width / 2, this.renderer.height / 2 + 50);
+        ctx.fillText('Click to continue', w / 2, h / 2 + 45);
     }
 }
 

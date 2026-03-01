@@ -1,4 +1,5 @@
 import { UI_COLORS } from '../data/Constants.js';
+import { UITheme } from './UITheme.js';
 
 export class Button {
     constructor(x, y, w, h, text, options = {}) {
@@ -8,7 +9,8 @@ export class Button {
         this.h = h;
         this.text = text;
         this.color = options.color || UI_COLORS.panel;
-        this.hoverColor = options.hoverColor || UI_COLORS.accent;
+        this.hoverColor = options.hoverColor || null;
+        this.hoverBorder = options.hoverBorder || null;
         this.textColor = options.textColor || UI_COLORS.text;
         this.borderColor = options.borderColor || UI_COLORS.panelBorder;
         this.fontSize = options.fontSize || 14;
@@ -33,17 +35,13 @@ export class Button {
     }
 
     render(ctx) {
-        ctx.fillStyle = this.isHovered ? this.hoverColor : this.color;
-        ctx.fillRect(this.x, this.y, this.w, this.h);
-
-        ctx.strokeStyle = this.isHovered ? this.hoverColor : this.borderColor;
-        ctx.lineWidth = this.isHovered ? 2 : 1;
-        ctx.strokeRect(this.x, this.y, this.w, this.h);
-
-        ctx.font = `bold ${this.fontSize}px monospace`;
-        ctx.fillStyle = this.textColor;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.text, this.x + this.w / 2, this.y + this.h / 2);
+        UITheme.drawButton(ctx, this.x, this.y, this.w, this.h, this.text, this.isHovered, {
+            fill: this.color,
+            border: this.borderColor,
+            textColor: this.textColor,
+            fontSize: this.fontSize,
+            hoverColor: this.hoverColor,
+            hoverBorder: this.hoverBorder,
+        });
     }
 }

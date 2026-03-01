@@ -4,8 +4,8 @@ export class DifficultyScaler {
     }
 
     getAIDifficulty(floor) {
-        if (floor <= 1) return 1;
-        if (floor <= 2) return 2;
+        if (floor <= 2) return 1;
+        if (floor <= 4) return 2;
         if (floor <= 6) return 3;
         if (floor <= 8) return 4;
         return 5;

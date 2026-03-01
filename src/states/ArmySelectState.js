@@ -2,6 +2,7 @@ import { ARMIES, getArmyList } from '../data/ArmyData.js';
 import { PieceRenderer } from '../render/PieceRenderer.js';
 import { Piece } from '../pieces/Piece.js';
 import { TEAMS, UI_COLORS } from '../data/Constants.js';
+import { UITheme } from '../ui/UITheme.js';
 
 export class ArmySelectState {
     constructor() {
@@ -42,11 +43,11 @@ export class ArmySelectState {
 
     getCardBounds() {
         const cardW = 180;
-        const cardH = 240;
-        const gap = 20;
+        const cardH = 250;
+        const gap = 18;
         const totalW = this.armies.length * (cardW + gap) - gap;
         const startX = (this.renderer.width - totalW) / 2;
-        const y = this.renderer.height / 2 - cardH / 2 + 20;
+        const y = this.renderer.height / 2 - cardH / 2 + 24;
 
         return this.armies.map((_, i) => ({
             x: startX + i * (cardW + gap),
@@ -100,16 +101,22 @@ export class ArmySelectState {
     update(dt) {}
 
     render(ctx) {
+        const w = this.renderer.width;
+        const h = this.renderer.height;
+
+        UITheme.drawBackground(ctx, w, h);
+        UITheme.drawVignette(ctx, w, h, 0.4);
+
         // Title
-        ctx.font = 'bold 36px monospace';
-        ctx.fillStyle = UI_COLORS.text;
+        UITheme.drawTitle(ctx, 'Choose Your Army', w / 2, 55, 32);
+
+        ctx.font = '13px monospace';
+        ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Choose Your Army', this.renderer.width / 2, 60);
+        ctx.fillText('Select a starting army for your run', w / 2, 90);
 
-        ctx.font = '14px monospace';
-        ctx.fillStyle = UI_COLORS.textDim;
-        ctx.fillText('Select a starting army for your run', this.renderer.width / 2, 95);
+        UITheme.drawDivider(ctx, w / 2 - 140, 110, 280);
 
         const bounds = this.getCardBounds();
 
@@ -118,21 +125,28 @@ export class ArmySelectState {
             const b = bounds[i];
             const isHover = this.hoverIndex === i;
             const isSelected = this.selectedIndex === i;
+            const active = isHover || isSelected;
 
-            // Card background
-            ctx.fillStyle = isHover || isSelected ? UI_COLORS.panel : UI_COLORS.bgLight;
-            ctx.fillRect(b.x, b.y, b.w, b.h);
+            // Card
+            UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
+                highlight: active,
+                glow: isSelected,
+                fill: active ? '#1a1a28' : UI_COLORS.panel,
+            });
 
-            // Border
-            ctx.strokeStyle = isSelected ? army.color : (isHover ? UI_COLORS.accent : UI_COLORS.panelBorder);
-            ctx.lineWidth = isSelected ? 3 : 1;
-            ctx.strokeRect(b.x, b.y, b.w, b.h);
+            // Color accent bar at top
+            ctx.beginPath();
+            UITheme.roundRect(ctx, b.x + 1, b.y + 1, b.w - 2, 3, 2);
+            ctx.fillStyle = army.color;
+            ctx.globalAlpha = active ? 0.8 : 0.4;
+            ctx.fill();
+            ctx.globalAlpha = 1;
 
             // Army name
             ctx.font = 'bold 13px monospace';
-            ctx.fillStyle = army.color;
+            ctx.fillStyle = active ? army.color : UI_COLORS.text;
             ctx.textAlign = 'center';
-            ctx.fillText(army.name, b.x + b.w / 2, b.y + 22);
+            ctx.fillText(army.name, b.x + b.w / 2, b.y + 26);
 
             // Piece icons
             const pieceSize = 28;
@@ -145,7 +159,7 @@ export class ArmySelectState {
                 const row = Math.floor(j / piecesPerRow);
                 const col = j % piecesPerRow;
                 const px = pieceStartX + col * (pieceSize + pieceGap);
-                const py = b.y + 38 + row * (pieceSize + pieceGap);
+                const py = b.y + 44 + row * (pieceSize + pieceGap);
                 const tempPiece = new Piece(army.pieces[j].type, TEAMS.PLAYER);
                 PieceRenderer.draw(ctx, tempPiece, px, py, pieceSize);
             }
@@ -154,33 +168,15 @@ export class ArmySelectState {
             ctx.font = '11px monospace';
             ctx.fillStyle = UI_COLORS.textDim;
             ctx.textAlign = 'center';
-            const desc = army.description;
-            this.wrapText(ctx, desc, b.x + b.w / 2, b.y + 140, b.w - 16, 14);
+            UITheme.wrapText(ctx, army.description, b.x + b.w / 2, b.y + 148, b.w - 20, 14);
         }
 
         // Instructions
         ctx.font = '12px monospace';
         ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = 'center';
-        ctx.fillText('Click to select  |  Arrow keys to browse  |  Enter to confirm', this.renderer.width / 2, this.renderer.height - 40);
-    }
-
-    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-        const words = text.split(' ');
-        let line = '';
-        let lines = [];
-        for (const word of words) {
-            const test = line + (line ? ' ' : '') + word;
-            if (ctx.measureText(test).width > maxWidth && line) {
-                lines.push(line);
-                line = word;
-            } else {
-                line = test;
-            }
-        }
-        if (line) lines.push(line);
-        for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], x, y + i * lineHeight);
-        }
+        ctx.globalAlpha = 0.6;
+        ctx.fillText('Click to select  |  Arrow keys to browse', w / 2, h - 40);
+        ctx.globalAlpha = 1;
     }
 }

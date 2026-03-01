@@ -156,6 +156,82 @@ export class MovementPattern {
             }
         }
 
+        // Castling (only for non-capture move generation)
+        if (!capturesOnly && !piece.hasMoved) {
+            const castles = this.getCastlingMoves(piece, board);
+            for (const c of castles) moves.push(c);
+        }
+
         return moves;
+    }
+
+    static getCastlingMoves(king, board) {
+        const moves = [];
+        const row = king.row;
+        const enemyTeam = king.team === TEAMS.PLAYER ? TEAMS.ENEMY : TEAMS.PLAYER;
+
+        // Check if king is in check
+        if (this.isSquareAttackedBy(king.col, row, enemyTeam, board)) return moves;
+
+        // Kingside (rook to the right)
+        const kRook = board.getPieceAt(board.cols - 1, row);
+        if (kRook && kRook.type === PIECE_TYPES.ROOK && kRook.team === king.team && !kRook.hasMoved) {
+            let clear = true;
+            for (let c = king.col + 1; c < board.cols - 1; c++) {
+                const t = board.getTile(c, row);
+                if (t.hasPiece() || !t.isPassable()) { clear = false; break; }
+            }
+            if (clear) {
+                // King must not pass through or land on attacked square
+                const pass1 = !this.isSquareAttackedBy(king.col + 1, row, enemyTeam, board);
+                const pass2 = !this.isSquareAttackedBy(king.col + 2, row, enemyTeam, board);
+                if (pass1 && pass2) {
+                    moves.push({
+                        col: king.col + 2, row, type: 'castle',
+                        rookFromCol: board.cols - 1, rookToCol: king.col + 1,
+                    });
+                }
+            }
+        }
+
+        // Queenside (rook to the left)
+        const qRook = board.getPieceAt(0, row);
+        if (qRook && qRook.type === PIECE_TYPES.ROOK && qRook.team === king.team && !qRook.hasMoved) {
+            let clear = true;
+            for (let c = 1; c < king.col; c++) {
+                const t = board.getTile(c, row);
+                if (t.hasPiece() || !t.isPassable()) { clear = false; break; }
+            }
+            if (clear) {
+                const pass1 = !this.isSquareAttackedBy(king.col - 1, row, enemyTeam, board);
+                const pass2 = !this.isSquareAttackedBy(king.col - 2, row, enemyTeam, board);
+                if (pass1 && pass2) {
+                    moves.push({
+                        col: king.col - 2, row, type: 'castle',
+                        rookFromCol: 0, rookToCol: king.col - 1,
+                    });
+                }
+            }
+        }
+
+        return moves;
+    }
+
+    static isSquareAttackedBy(col, row, team, board) {
+        const pieces = board.getTeamPieces(team);
+        for (const p of pieces) {
+            // Use capturesOnly=true to get attack squares (avoids recursion for king)
+            let attackMoves;
+            if (p.type === PIECE_TYPES.KING) {
+                // Just check adjacent squares for king to avoid infinite recursion
+                const dc = Math.abs(p.col - col);
+                const dr = Math.abs(p.row - row);
+                if (dc <= 1 && dr <= 1 && (dc + dr > 0)) return true;
+                continue;
+            }
+            attackMoves = this.getMoves(p, board, true);
+            if (attackMoves.some(m => m.col === col && m.row === row)) return true;
+        }
+        return false;
     }
 }

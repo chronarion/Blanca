@@ -102,12 +102,12 @@ export class EncounterGenerator {
     }
 
     generateFallback(floor, difficulty) {
-        const cols = Math.min(10, 6 + Math.floor(floor / 3));
-        const rows = cols;
+        const cols = 8;
+        const rows = 8;
         const midCol = Math.floor(cols / 2);
 
         const enemyPieces = [{ type: PIECE_TYPES.KING, col: midCol, row: 0 }];
-        const pawnCount = Math.min(cols - 1, 2 + floor);
+        const pawnCount = Math.min(cols - 1, 1 + floor);
         for (let i = 0; i < pawnCount; i++) {
             const c = Math.min(cols - 1, Math.max(0, midCol - Math.floor(pawnCount / 2) + i));
             enemyPieces.push({ type: PIECE_TYPES.PAWN, col: c, row: 1 });
@@ -130,61 +130,71 @@ export class EncounterGenerator {
 
     placePlayerPieces(roster, cols, rows, enemyCount = Infinity) {
         const placed = [];
-        const maxDeploy = Math.min(Math.floor((cols * rows) * 0.25), enemyCount + 2);
-        const midCol = Math.floor(cols / 2);
-        const lastRow = rows - 1;
-        const minRow = Math.floor(rows * 0.6);
-
-        // Sort: king first, then by value
-        const sorted = [...roster].sort((a, b) => {
-            if (a.type === PIECE_TYPES.KING) return -1;
-            if (b.type === PIECE_TYPES.KING) return 1;
-            return 0;
-        });
-
         const occupied = new Set();
+        const lastRow = rows - 1;
+        const pawnRow = lastRow - 1;
 
-        let colOffset = 0;
-        let count = 0;
-        for (const piece of sorted) {
-            if (count >= maxDeploy) break;
-            const isPawn = piece.type === PIECE_TYPES.PAWN;
-            const baseRow = Math.max(minRow, isPawn ? lastRow - 1 : lastRow);
-            let col;
-            if (piece.type === PIECE_TYPES.KING) {
-                col = midCol;
-            } else {
-                col = Math.min(cols - 1, Math.max(0, midCol + colOffset));
-                colOffset = colOffset <= 0 ? -colOffset + 1 : -colOffset;
-            }
+        // Standard chess formation order for back rank: R N B Q K B N R
+        const backRankOrder = [
+            PIECE_TYPES.ROOK, PIECE_TYPES.KNIGHT, PIECE_TYPES.BISHOP, PIECE_TYPES.QUEEN,
+            PIECE_TYPES.KING, PIECE_TYPES.BISHOP, PIECE_TYPES.KNIGHT, PIECE_TYPES.ROOK,
+        ];
 
-            // Find a free position, adjusting if occupied
-            let row = baseRow;
-            let key = `${col},${row}`;
-            while (occupied.has(key) && row >= minRow) {
-                row--;
-                key = `${col},${row}`;
+        // Separate by type
+        const byType = {};
+        for (const piece of roster) {
+            if (!byType[piece.type]) byType[piece.type] = [];
+            byType[piece.type].push(piece);
+        }
+
+        // Place back rank pieces in standard formation
+        for (let col = 0; col < Math.min(cols, backRankOrder.length); col++) {
+            const type = backRankOrder[col];
+            if (byType[type] && byType[type].length > 0) {
+                const piece = byType[type].shift();
+                const key = `${col},${lastRow}`;
+                occupied.add(key);
+                placed.push({ piece, col, row: lastRow });
             }
-            if (occupied.has(key)) {
-                // Try adjacent columns
-                for (let dc = 1; dc < cols; dc++) {
-                    for (const tryCol of [col + dc, col - dc]) {
-                        if (tryCol >= 0 && tryCol < cols) {
-                            key = `${tryCol},${baseRow}`;
-                            if (!occupied.has(key)) {
-                                col = tryCol;
-                                row = baseRow;
-                                break;
-                            }
-                        }
-                    }
-                    if (!occupied.has(`${col},${row}`)) break;
+        }
+
+        // Place pawns on second-to-last row
+        if (byType[PIECE_TYPES.PAWN]) {
+            let col = 0;
+            for (const piece of byType[PIECE_TYPES.PAWN]) {
+                while (col < cols && occupied.has(`${col},${pawnRow}`)) col++;
+                if (col >= cols) break;
+                occupied.add(`${col},${pawnRow}`);
+                placed.push({ piece, col, row: pawnRow });
+                col++;
+            }
+        }
+
+        // Place any remaining pieces (overflow from non-standard roster)
+        const remaining = [];
+        for (const type of Object.keys(byType)) {
+            if (type === PIECE_TYPES.PAWN) continue;
+            for (const piece of byType[type]) {
+                remaining.push(piece);
+            }
+        }
+        let overflowRow = lastRow - 2;
+        let overflowCol = 0;
+        for (const piece of remaining) {
+            while (overflowRow >= Math.floor(rows * 0.5)) {
+                const key = `${overflowCol},${overflowRow}`;
+                if (!occupied.has(key)) {
+                    occupied.add(key);
+                    placed.push({ piece, col: overflowCol, row: overflowRow });
+                    overflowCol++;
+                    break;
+                }
+                overflowCol++;
+                if (overflowCol >= cols) {
+                    overflowCol = 0;
+                    overflowRow--;
                 }
             }
-
-            occupied.add(`${col},${row}`);
-            placed.push({ piece, col, row });
-            count++;
         }
 
         return placed;

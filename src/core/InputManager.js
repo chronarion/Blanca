@@ -36,6 +36,11 @@ export class InputManager {
             this.eventBus.emit('rightclick', { x, y });
         });
 
+        this.canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            this.eventBus.emit('wheel', { deltaY: e.deltaY });
+        }, { passive: false });
+
         window.addEventListener('keydown', e => {
             if (!this.keys.has(e.code)) {
                 this.keys.add(e.code);

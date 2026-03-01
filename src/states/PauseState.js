@@ -1,4 +1,5 @@
 import { UI_COLORS } from '../data/Constants.js';
+import { UITheme } from '../ui/UITheme.js';
 import { Button } from '../ui/Button.js';
 
 export class PauseState {
@@ -41,11 +42,11 @@ export class PauseState {
     createButtons() {
         const w = this.renderer.width;
         const h = this.renderer.height;
-        const btnW = 180;
-        const btnH = 40;
+        const btnW = 200;
+        const btnH = 42;
         const x = (w - btnW) / 2;
-        const startY = h / 2 - 40;
-        const gap = 12;
+        const startY = h / 2 - 20;
+        const gap = 14;
 
         this.buttons = [
             new Button(x, startY, btnW, btnH, 'Resume', {
@@ -56,7 +57,8 @@ export class PauseState {
             }),
             new Button(x, startY + 2 * (btnH + gap), btnW, btnH, 'Quit to Menu', {
                 color: UI_COLORS.panel,
-                hoverColor: UI_COLORS.danger,
+                hoverColor: 'rgba(192, 64, 80, 0.2)',
+                hoverBorder: UI_COLORS.danger,
                 onClick: () => this.stateMachine.change('mainMenu'),
             }),
         ];
@@ -71,16 +73,26 @@ export class PauseState {
     update(dt) {}
 
     render(ctx) {
-        // Dim background
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(0, 0, this.renderer.width, this.renderer.height);
+        const w = this.renderer.width;
+        const h = this.renderer.height;
 
-        ctx.font = 'bold 32px monospace';
-        ctx.fillStyle = UI_COLORS.text;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('PAUSED', this.renderer.width / 2, this.renderer.height / 2 - 100);
+        // Dim overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(0, 0, w, h);
 
+        // Panel backdrop
+        const panelW = 280;
+        const panelH = 260;
+        const px = (w - panelW) / 2;
+        const py = (h - panelH) / 2 - 20;
+        UITheme.drawPanel(ctx, px, py, panelW, panelH, { radius: 10 });
+
+        // Title
+        UITheme.drawTitle(ctx, 'PAUSED', w / 2, py + 40, 28);
+
+        UITheme.drawDivider(ctx, px + 30, py + 64, panelW - 60);
+
+        // Buttons
         for (const btn of this.buttons) {
             btn.render(ctx);
         }

@@ -1,4 +1,5 @@
 import { UI_COLORS } from '../data/Constants.js';
+import { UITheme } from '../ui/UITheme.js';
 import { Button } from '../ui/Button.js';
 
 export class MainMenuState {
@@ -32,32 +33,31 @@ export class MainMenuState {
     createButtons() {
         const w = this.renderer.width;
         const h = this.renderer.height;
-        const btnW = 200;
-        const btnH = 44;
+        const btnW = 220;
+        const btnH = 46;
         const x = (w - btnW) / 2;
-        const startY = h / 2 + 20;
-        const gap = 12;
+        const startY = h / 2 + 40;
+        const gap = 14;
 
         this.buttons = [];
 
         this.buttons.push(new Button(x, startY, btnW, btnH, 'New Game', {
-            color: UI_COLORS.panel,
-            hoverColor: UI_COLORS.accent,
-            onClick: () => this.stateMachine.change('armySelect'),
+            onClick: () => {
+                if (this.runManager) {
+                    this.runManager.startRun('standard');
+                    this.stateMachine.change('map');
+                }
+            },
         }));
 
         const hasSave = this.saveManager && this.saveManager.hasSave();
         if (hasSave) {
             this.buttons.push(new Button(x, startY + btnH + gap, btnW, btnH, 'Continue', {
-                color: UI_COLORS.panel,
-                hoverColor: UI_COLORS.success,
                 onClick: () => this.loadGame(),
             }));
         }
 
         this.buttons.push(new Button(x, startY + (hasSave ? 2 : 1) * (btnH + gap), btnW, btnH, 'Settings', {
-            color: UI_COLORS.panel,
-            hoverColor: UI_COLORS.info,
             onClick: () => {
                 if (this.stateMachine.states.has('settings')) {
                     this.stateMachine.change('settings');
@@ -75,7 +75,10 @@ export class MainMenuState {
         };
         this.keyHandler = (data) => {
             if (data.code === 'Enter') {
-                this.stateMachine.change('armySelect');
+                if (this.runManager) {
+                    this.runManager.startRun('standard');
+                    this.stateMachine.change('map');
+                }
             }
         };
         this.eventBus.on('click', this.clickHandler);
@@ -101,25 +104,34 @@ export class MainMenuState {
         const w = this.renderer.width;
         const h = this.renderer.height;
 
-        // Title
-        const pulse = Math.sin(this.titlePulse * 2) * 0.1 + 0.9;
-        ctx.font = `bold ${Math.floor(64 * pulse)}px monospace`;
-        ctx.fillStyle = UI_COLORS.text;
+        UITheme.drawBackground(ctx, w, h);
+        UITheme.drawVignette(ctx, w, h, 0.6);
+
+        // Title with subtle pulse
+        const pulse = Math.sin(this.titlePulse * 1.5) * 0.04 + 1;
+        UITheme.drawTitle(ctx, 'BLANCA', w / 2, h / 2 - 80, Math.floor(56 * pulse));
+
+        // Subtitle
+        ctx.font = '15px monospace';
+        ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('BLANCA', w / 2, h / 2 - 80);
+        ctx.fillText('A Chess Roguelike', w / 2, h / 2 - 25);
 
-        ctx.font = '16px monospace';
-        ctx.fillStyle = UI_COLORS.textDim;
-        ctx.fillText('A Chess Roguelike', w / 2, h / 2 - 30);
+        // Divider
+        UITheme.drawDivider(ctx, w / 2 - 120, h / 2 + 12, 240);
 
+        // Buttons
         for (const btn of this.buttons) {
             btn.render(ctx);
         }
 
+        // Version
         ctx.font = '11px monospace';
         ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = 'center';
-        ctx.fillText('v0.1 — Chess IS the game', w / 2, h - 24);
+        ctx.globalAlpha = 0.5;
+        ctx.fillText('v0.1  —  Chess IS the game', w / 2, h - 24);
+        ctx.globalAlpha = 1;
     }
 }

@@ -31,6 +31,7 @@ export class RunManager {
         this.rewardTable = null;
         this.shop = null;
 
+        this.prisoners = {};
         this.map = [];
         this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
         this.isActive = false;
@@ -56,6 +57,7 @@ export class RunManager {
         this.currentNode = null;
 
         this.relicSystem = new RelicSystem(this.eventBus);
+        this.prisoners = {};
         this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
 
         // Apply army-specific starting relics
@@ -69,6 +71,7 @@ export class RunManager {
     }
 
     applyArmyAbility(army) {
+        if (!army.ability) return;
         switch (army.ability) {
             case 'earlyPromotion':
                 // Handled via armyAbility field in CombatManager
@@ -168,6 +171,13 @@ export class RunManager {
             }
         }
 
+        // Add captured enemy pieces as prisoners
+        if (result.capturedByPlayer) {
+            for (const captured of result.capturedByPlayer) {
+                this.addPrisoner(captured.type);
+            }
+        }
+
         return this.rewardTable.getBattleRewards(this.currentFloor, result.isElite);
     }
 
@@ -215,6 +225,29 @@ export class RunManager {
         this.relicSystem.addRelic(relic);
     }
 
+    addPrisoner(type) {
+        if (type === PIECE_TYPES.KING) return;
+        if (!this.prisoners[type]) this.prisoners[type] = 0;
+        this.prisoners[type]++;
+    }
+
+    convertPrisoners(type) {
+        if ((this.prisoners[type] || 0) < 3) return false;
+        if (this.roster.length >= ROSTER_LIMIT) return false;
+        this.prisoners[type] -= 3;
+        this.recruitPiece(type);
+        return true;
+    }
+
+    releasePrisoner(type) {
+        if ((this.prisoners[type] || 0) < 1) return 0;
+        this.prisoners[type]--;
+        const ransom = { pawn: 2, knight: 4, bishop: 4, rook: 6, queen: 10 };
+        const gold = ransom[type] || 2;
+        this.gold += gold;
+        return gold;
+    }
+
     generateShop() {
         const ownedIds = this.relicSystem.ownedRelics.map(r => r.id);
         return this.shop.generate(this.currentFloor, ownedIds);
@@ -246,6 +279,7 @@ export class RunManager {
             gold: this.gold,
             currentFloor: this.currentFloor,
             relics: this.relicSystem.serialize(),
+            prisoners: { ...this.prisoners },
             stats: { ...this.stats },
             isActive: this.isActive,
         };
@@ -261,11 +295,12 @@ export class RunManager {
         this.shop = new Shop(this.rng, this.eventBus);
 
         this.armyId = data.armyId;
-        this.armyAbility = ARMIES[data.armyId]?.ability;
+        this.armyAbility = ARMIES[data.armyId]?.ability || null;
         this.roster = data.roster.map(p => Piece.deserialize(p));
         this.gold = data.gold;
         this.currentFloor = data.currentFloor;
         this.relicSystem.deserialize(data.relics);
+        this.prisoners = data.prisoners || {};
         this.stats = data.stats;
         this.isActive = data.isActive;
 

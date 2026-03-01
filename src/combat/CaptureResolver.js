@@ -56,14 +56,6 @@ export class CaptureResolver {
     }
 
     getGoldValue(piece) {
-        const values = {
-            [PIECE_TYPES.PAWN]: 2,
-            [PIECE_TYPES.KNIGHT]: 5,
-            [PIECE_TYPES.BISHOP]: 5,
-            [PIECE_TYPES.ROOK]: 8,
-            [PIECE_TYPES.QUEEN]: 12,
-            [PIECE_TYPES.KING]: 25,
-        };
-        return values[piece.type] || 1;
+        return 1;
     }
 }

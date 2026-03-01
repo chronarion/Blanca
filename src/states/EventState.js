@@ -1,6 +1,7 @@
 import { UI_COLORS, PIECE_TYPES } from '../data/Constants.js';
 import { getRandomEvent } from '../data/EventData.js';
 import { getRandomModifier } from '../data/ModifierData.js';
+import { UITheme } from '../ui/UITheme.js';
 
 export class EventState {
     constructor() {
@@ -44,11 +45,11 @@ export class EventState {
 
     getChoiceBounds() {
         if (!this.event) return [];
-        const btnW = 400;
-        const btnH = 44;
+        const btnW = 380;
+        const btnH = 42;
         const gap = 10;
         const totalH = this.event.choices.length * (btnH + gap) - gap;
-        const startY = this.renderer.height / 2 + 20;
+        const startY = this.renderer.height / 2 + 30;
         const x = (this.renderer.width - btnW) / 2;
 
         return this.event.choices.map((choice, i) => ({
@@ -244,31 +245,56 @@ export class EventState {
 
     render(ctx) {
         const w = this.renderer.width;
+        const h = this.renderer.height;
         if (!this.event) return;
 
-        // Title
-        ctx.font = 'bold 28px monospace';
-        ctx.fillStyle = UI_COLORS.accent;
+        UITheme.drawBackground(ctx, w, h);
+
+        // Atmospheric glow
+        const grad = ctx.createRadialGradient(w / 2, h * 0.3, 0, w / 2, h * 0.3, w * 0.4);
+        grad.addColorStop(0, 'rgba(80, 50, 120, 0.08)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        UITheme.drawVignette(ctx, w, h, 0.5);
+
+        // Event icon
+        ctx.font = '28px serif';
+        ctx.fillStyle = 'rgba(200, 168, 78, 0.3)';
         ctx.textAlign = 'center';
-        ctx.fillText(this.event.title, w / 2, 60);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('?', w / 2, 40);
+
+        // Title
+        UITheme.drawTitle(ctx, this.event.title, w / 2, 70, 26);
+
+        UITheme.drawDivider(ctx, w / 2 - 120, 95, 240);
 
         // Description
-        ctx.font = '14px monospace';
+        ctx.font = '13px monospace';
         ctx.fillStyle = UI_COLORS.text;
-        this.wrapText(ctx, this.event.description, w / 2, 110, 500, 20);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        UITheme.wrapText(ctx, this.event.description, w / 2, 120, 460, 20);
 
         if (this.result) {
-            // Show result
-            ctx.font = 'bold 16px monospace';
+            // Result panel
+            UITheme.drawPanel(ctx, w / 2 - 220, h / 2 - 30, 440, 60, {
+                fill: 'rgba(90, 158, 106, 0.1)',
+                border: UI_COLORS.success,
+            });
+
+            ctx.font = 'bold 14px monospace';
             ctx.fillStyle = UI_COLORS.success;
             ctx.textAlign = 'center';
-            this.wrapText(ctx, this.result, w / 2, this.renderer.height / 2, 400, 22);
+            UITheme.wrapText(ctx, this.result, w / 2, h / 2 - 6, 400, 20);
 
             ctx.font = '12px monospace';
             ctx.fillStyle = UI_COLORS.textDim;
-            ctx.fillText('Click to continue', w / 2, this.renderer.height - 50);
+            ctx.fillText('Click to continue', w / 2, h - 50);
         } else {
-            // Show choices
+            // Choices
             const bounds = this.getChoiceBounds();
             for (let i = 0; i < bounds.length; i++) {
                 const b = bounds[i];
@@ -276,35 +302,12 @@ export class EventState {
                 const isHover = this.hoverChoice === i;
                 const canChoose = this.meetsRequirement(choice);
 
-                ctx.fillStyle = isHover ? UI_COLORS.panel : UI_COLORS.bgLight;
-                ctx.fillRect(b.x, b.y, b.w, b.h);
-                ctx.strokeStyle = canChoose ? (isHover ? UI_COLORS.accent : UI_COLORS.panelBorder) : '#555';
-                ctx.lineWidth = isHover ? 2 : 1;
-                ctx.strokeRect(b.x, b.y, b.w, b.h);
-
-                ctx.font = '13px monospace';
-                ctx.fillStyle = canChoose ? UI_COLORS.text : UI_COLORS.textDim;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(choice.text, b.x + b.w / 2, b.y + b.h / 2);
+                UITheme.drawButton(ctx, b.x, b.y, b.w, b.h, choice.text, isHover && canChoose, {
+                    fontSize: 12,
+                    textColor: canChoose ? UI_COLORS.text : UI_COLORS.textDim,
+                    border: canChoose ? UI_COLORS.panelBorder : '#333',
+                });
             }
         }
-    }
-
-    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-        const words = text.split(' ');
-        let line = '';
-        let lineNum = 0;
-        for (const word of words) {
-            const test = line + (line ? ' ' : '') + word;
-            if (ctx.measureText(test).width > maxWidth && line) {
-                ctx.fillText(line, x, y + lineNum * lineHeight);
-                line = word;
-                lineNum++;
-            } else {
-                line = test;
-            }
-        }
-        if (line) ctx.fillText(line, x, y + lineNum * lineHeight);
     }
 }

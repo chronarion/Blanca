@@ -169,6 +169,10 @@
         const y = e.clientY - rect.top;
         this.eventBus.emit("rightclick", { x, y });
       });
+      this.canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        this.eventBus.emit("wheel", { deltaY: e.deltaY });
+      }, { passive: false });
       window.addEventListener("keydown", (e) => {
         if (!this.keys.has(e.code)) {
           this.keys.add(e.code);
@@ -615,26 +619,21 @@
     lightLastMove: "#cdd26a",
     darkLastMove: "#aaa23a"
   };
-  var PIECE_COLORS = {
-    player: "#ffffff",
-    playerOutline: "#333333",
-    enemy: "#1a1a2e",
-    enemyOutline: "#666666"
-  };
   var UI_COLORS = {
-    bg: "#0a0a0f",
-    bgLight: "#1a1a2e",
-    panel: "#16213e",
-    panelBorder: "#0f3460",
-    text: "#e0e0e0",
-    textDim: "#888888",
-    accent: "#e94560",
-    accentGlow: "#ff6b81",
-    gold: "#ffd700",
-    success: "#4caf50",
-    warning: "#ff9800",
-    danger: "#f44336",
-    info: "#2196f3"
+    bg: "#09090d",
+    bgLight: "#13131d",
+    panel: "#161622",
+    panelBorder: "#2a2540",
+    text: "#e0d8c8",
+    textDim: "#6a6272",
+    accent: "#c9a84e",
+    accentGlow: "#e0c060",
+    accentAlt: "#c04050",
+    gold: "#c9a84e",
+    success: "#5a9e6a",
+    warning: "#d0a040",
+    danger: "#c04050",
+    info: "#5880b8"
   };
   var PIECE_TYPES = {
     PAWN: "pawn",
@@ -668,70 +667,30 @@
 
   // src/data/ArmyData.js
   var ARMIES = {
-    pawnsGambit: {
-      id: "pawnsGambit",
-      name: "The Pawns' Gambit",
-      description: "Pawns promote one rank earlier (rank 7 instead of 8)",
+    standard: {
+      id: "standard",
+      name: "Standard",
+      description: "A full chess army",
       pieces: [
         { type: PIECE_TYPES.KING },
-        { type: PIECE_TYPES.PAWN },
-        { type: PIECE_TYPES.PAWN },
-        { type: PIECE_TYPES.PAWN },
-        { type: PIECE_TYPES.PAWN },
-        { type: PIECE_TYPES.PAWN }
-      ],
-      ability: "earlyPromotion",
-      color: "#e8d44d"
-    },
-    knightErrant: {
-      id: "knightErrant",
-      name: "Knight Errant",
-      description: "Knights can move again after capturing (once per turn)",
-      pieces: [
-        { type: PIECE_TYPES.KING },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN }
-      ],
-      ability: "knightDoubleCapture",
-      color: "#4dabf7"
-    },
-    bishopsDiocese: {
-      id: "bishopsDiocese",
-      name: "The Bishop's Diocese",
-      description: "Bishops can move through one friendly piece",
-      pieces: [
-        { type: PIECE_TYPES.KING },
-        { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.PAWN }
-      ],
-      ability: "bishopPhase",
-      color: "#9775fa"
-    },
-    rooksFortress: {
-      id: "rooksFortress",
-      name: "Rook's Fortress",
-      description: "Your rooks can't be captured on the first turn of each battle",
-      pieces: [
-        { type: PIECE_TYPES.KING },
+        { type: PIECE_TYPES.QUEEN },
         { type: PIECE_TYPES.ROOK },
+        { type: PIECE_TYPES.ROOK },
+        { type: PIECE_TYPES.BISHOP },
+        { type: PIECE_TYPES.BISHOP },
+        { type: PIECE_TYPES.KNIGHT },
+        { type: PIECE_TYPES.KNIGHT },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
       ],
-      ability: "rookShield",
-      color: "#ff6b6b"
-    },
-    queensCourt: {
-      id: "queensCourt",
-      name: "The Queen's Court",
-      description: "Queen splits into Bishop + Rook on death instead of dying",
-      pieces: [
-        { type: PIECE_TYPES.KING },
-        { type: PIECE_TYPES.QUEEN }
-      ],
-      ability: "queenSplit",
-      color: "#ffd43b"
+      ability: null,
+      color: "#c9a84e"
     }
   };
   function getArmyList() {
@@ -787,9 +746,9 @@
     { floor: 4, difficulty: 2, nodeCount: 4, paths: 3, types: { battle: 0.5, elite: 0.15, event: 0.1, shop: 0.15, rest: 0.1 } },
     { floor: 5, difficulty: 3, nodeCount: 1, paths: 1, types: { boss: 1 } },
     { floor: 6, difficulty: 3, nodeCount: 3, paths: 2, types: { battle: 0.5, event: 0.2, shop: 0.15, rest: 0.15 } },
-    { floor: 7, difficulty: 3, nodeCount: 4, paths: 2, types: { battle: 0.5, elite: 0.15, event: 0.1, shop: 0.15, rest: 0.1 } },
+    { floor: 7, difficulty: 4, nodeCount: 4, paths: 2, types: { battle: 0.5, elite: 0.15, event: 0.1, shop: 0.15, rest: 0.1 } },
     { floor: 8, difficulty: 4, nodeCount: 4, paths: 3, types: { battle: 0.45, elite: 0.2, event: 0.1, shop: 0.15, rest: 0.1 } },
-    { floor: 9, difficulty: 4, nodeCount: 3, paths: 2, types: { battle: 0.4, elite: 0.2, shop: 0.2, rest: 0.2 } },
+    { floor: 9, difficulty: 5, nodeCount: 3, paths: 2, types: { battle: 0.4, elite: 0.2, shop: 0.2, rest: 0.2 } },
     { floor: 10, difficulty: 5, nodeCount: 1, paths: 1, types: { boss: 1 } }
   ];
   function getFloorConfig(floor) {
@@ -803,47 +762,84 @@
     }
     generateFloor(floorNum) {
       const config = getFloorConfig(floorNum);
-      const nodes = [];
       if (config.types.boss) {
-        nodes.push({
+        const nodes2 = [{
           id: 0,
           type: "boss",
           floor: floorNum,
+          layer: 0,
+          layerIndex: 0,
           x: 0.5,
           y: 0.5,
           connections: [],
           visited: false
-        });
-        return { floor: floorNum, nodes, config };
+        }];
+        return { floor: floorNum, nodes: nodes2, config, layers: 1 };
       }
-      const count = config.nodeCount;
-      for (let i = 0; i < count; i++) {
-        const type = this.rollNodeType(config.types);
-        nodes.push({
-          id: i,
-          type,
-          floor: floorNum,
-          x: (i + 0.5) / count,
-          y: 0.3 + this.rng.random() * 0.4,
-          connections: [],
-          visited: false
-        });
-      }
-      for (let i = 0; i < count; i++) {
-        const maxConn = Math.min(2, count - 1);
-        const connections = /* @__PURE__ */ new Set();
-        if (i < count - 1) connections.add(i + 1);
-        if (i > 0 && this.rng.random() < 0.4) connections.add(i - 1);
-        if (this.rng.random() < 0.3) {
-          const target = this.rng.randomInt(0, count - 1);
-          if (target !== i) connections.add(target);
+      const layerCount = config.nodeCount;
+      const nodesPerLayer = config.paths || 2;
+      const nodes = [];
+      let id = 0;
+      const layers = [];
+      for (let l = 0; l < layerCount; l++) {
+        const layer = [];
+        let count;
+        if (l === 0) count = Math.min(nodesPerLayer, 2);
+        else if (l === layerCount - 1) count = Math.min(nodesPerLayer, 2);
+        else count = nodesPerLayer;
+        for (let i = 0; i < count; i++) {
+          const type = this.rollNodeType(config.types);
+          const node = {
+            id: id++,
+            type,
+            floor: floorNum,
+            layer: l,
+            layerIndex: i,
+            x: (l + 0.5) / layerCount,
+            y: count === 1 ? 0.5 : (i + 0.5) / count,
+            connections: [],
+            visited: false
+          };
+          layer.push(node);
+          nodes.push(node);
         }
-        nodes[i].connections = [...connections];
+        layers.push(layer);
       }
-      return { floor: floorNum, nodes, config };
+      for (let l = 0; l < layers.length - 1; l++) {
+        const current = layers[l];
+        const next = layers[l + 1];
+        for (const node of current) {
+          const closest = next.reduce((best, n) => {
+            const dist = Math.abs(node.layerIndex / current.length - n.layerIndex / next.length);
+            const bestDist = Math.abs(node.layerIndex / current.length - best.layerIndex / next.length);
+            return dist < bestDist ? n : best;
+          }, next[0]);
+          if (!node.connections.includes(closest.id)) {
+            node.connections.push(closest.id);
+          }
+          if (next.length > 1 && this.rng.random() < 0.5) {
+            const other = next.find((n) => n.id !== closest.id);
+            if (other && !node.connections.includes(other.id)) {
+              node.connections.push(other.id);
+            }
+          }
+        }
+        for (const nextNode of next) {
+          const hasIncoming = current.some((n) => n.connections.includes(nextNode.id));
+          if (!hasIncoming) {
+            const closest = current.reduce((best, n) => {
+              const dist = Math.abs(n.layerIndex / current.length - nextNode.layerIndex / next.length);
+              const bestDist = Math.abs(best.layerIndex / current.length - nextNode.layerIndex / next.length);
+              return dist < bestDist ? n : best;
+            }, current[0]);
+            closest.connections.push(nextNode.id);
+          }
+        }
+      }
+      return { floor: floorNum, nodes, config, layers: layerCount };
     }
     rollNodeType(typeWeights) {
-      const types = Object.keys(typeWeights);
+      const types = Object.keys(typeWeights).filter((t) => t !== "boss");
       const weights = types.map((t) => typeWeights[t]);
       return this.rng.weightedChoice(types, weights);
     }
@@ -863,10 +859,9 @@
       id: "scoutPatrol",
       name: "Scout Patrol",
       difficulty: 1,
-      boardSize: { cols: 6, rows: 6 },
+      boardSize: { cols: 8, rows: 8 },
       pieces: [
         { type: PIECE_TYPES.KING },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -877,11 +872,9 @@
       id: "pawnWall",
       name: "Pawn Wall",
       difficulty: 1,
-      boardSize: { cols: 6, rows: 6 },
+      boardSize: { cols: 8, rows: 8 },
       pieces: [
         { type: PIECE_TYPES.KING },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
@@ -894,11 +887,12 @@
       id: "knightRaiders",
       name: "Knight Raiders",
       difficulty: 2,
-      boardSize: { cols: 7, rows: 7 },
+      boardSize: { cols: 8, rows: 8 },
       pieces: [
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.KNIGHT },
+        { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -909,11 +903,12 @@
       id: "bishopAmbush",
       name: "Bishop Ambush",
       difficulty: 2,
-      boardSize: { cols: 7, rows: 7 },
+      boardSize: { cols: 8, rows: 8 },
       pieces: [
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.BISHOP },
+        { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
@@ -998,10 +993,11 @@
       id: "royalArmy",
       name: "Royal Army",
       difficulty: 5,
-      boardSize: { cols: 10, rows: 8 },
+      boardSize: { cols: 8, rows: 8 },
       pieces: [
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.QUEEN },
+        { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.KNIGHT },
@@ -1014,18 +1010,38 @@
       ],
       goldReward: 30
     },
+    grandArmy: {
+      id: "grandArmy",
+      name: "Grand Army",
+      difficulty: 5,
+      boardSize: { cols: 8, rows: 8 },
+      pieces: [
+        { type: PIECE_TYPES.KING },
+        { type: PIECE_TYPES.QUEEN },
+        { type: PIECE_TYPES.ROOK },
+        { type: PIECE_TYPES.BISHOP },
+        { type: PIECE_TYPES.BISHOP },
+        { type: PIECE_TYPES.KNIGHT },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN },
+        { type: PIECE_TYPES.PAWN }
+      ],
+      goldReward: 28
+    },
     // Elites
     eliteKnightCommander: {
       id: "eliteKnightCommander",
       name: "Knight Commander",
-      difficulty: 3,
+      difficulty: 2,
       isElite: true,
-      boardSize: { cols: 7, rows: 7 },
+      boardSize: { cols: 8, rows: 8 },
       pieces: [
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.KNIGHT },
+        { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -1035,7 +1051,7 @@
     eliteBishopCouncil: {
       id: "eliteBishopCouncil",
       name: "Bishop Council",
-      difficulty: 3,
+      difficulty: 4,
       isElite: true,
       boardSize: { cols: 8, rows: 8 },
       pieces: [
@@ -1044,17 +1060,18 @@
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.BISHOP },
+        { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
       ],
-      goldReward: 25
+      goldReward: 28
     },
     eliteQueenGuard: {
       id: "eliteQueenGuard",
       name: "Queen's Guard",
-      difficulty: 4,
+      difficulty: 5,
       isElite: true,
       boardSize: { cols: 8, rows: 8 },
       pieces: [
@@ -1062,6 +1079,7 @@
         { type: PIECE_TYPES.QUEEN },
         { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.ROOK },
+        { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
@@ -1196,11 +1214,11 @@
       };
     }
     generateFallback(floor, difficulty) {
-      const cols = Math.min(10, 6 + Math.floor(floor / 3));
-      const rows = cols;
+      const cols = 8;
+      const rows = 8;
       const midCol = Math.floor(cols / 2);
       const enemyPieces = [{ type: PIECE_TYPES.KING, col: midCol, row: 0 }];
-      const pawnCount = Math.min(cols - 1, 2 + floor);
+      const pawnCount = Math.min(cols - 1, 1 + floor);
       for (let i = 0; i < pawnCount; i++) {
         const c = Math.min(cols - 1, Math.max(0, midCol - Math.floor(pawnCount / 2) + i));
         enemyPieces.push({ type: PIECE_TYPES.PAWN, col: c, row: 1 });
@@ -1221,53 +1239,67 @@
     }
     placePlayerPieces(roster, cols, rows, enemyCount = Infinity) {
       const placed = [];
-      const maxDeploy = Math.min(Math.floor(cols * rows * 0.25), enemyCount + 2);
-      const midCol = Math.floor(cols / 2);
-      const lastRow = rows - 1;
-      const minRow = Math.floor(rows * 0.6);
-      const sorted = [...roster].sort((a, b) => {
-        if (a.type === PIECE_TYPES.KING) return -1;
-        if (b.type === PIECE_TYPES.KING) return 1;
-        return 0;
-      });
       const occupied = /* @__PURE__ */ new Set();
-      let colOffset = 0;
-      let count = 0;
-      for (const piece of sorted) {
-        if (count >= maxDeploy) break;
-        const isPawn = piece.type === PIECE_TYPES.PAWN;
-        const baseRow = Math.max(minRow, isPawn ? lastRow - 1 : lastRow);
-        let col;
-        if (piece.type === PIECE_TYPES.KING) {
-          col = midCol;
-        } else {
-          col = Math.min(cols - 1, Math.max(0, midCol + colOffset));
-          colOffset = colOffset <= 0 ? -colOffset + 1 : -colOffset;
+      const lastRow = rows - 1;
+      const pawnRow = lastRow - 1;
+      const backRankOrder = [
+        PIECE_TYPES.ROOK,
+        PIECE_TYPES.KNIGHT,
+        PIECE_TYPES.BISHOP,
+        PIECE_TYPES.QUEEN,
+        PIECE_TYPES.KING,
+        PIECE_TYPES.BISHOP,
+        PIECE_TYPES.KNIGHT,
+        PIECE_TYPES.ROOK
+      ];
+      const byType = {};
+      for (const piece of roster) {
+        if (!byType[piece.type]) byType[piece.type] = [];
+        byType[piece.type].push(piece);
+      }
+      for (let col = 0; col < Math.min(cols, backRankOrder.length); col++) {
+        const type = backRankOrder[col];
+        if (byType[type] && byType[type].length > 0) {
+          const piece = byType[type].shift();
+          const key = `${col},${lastRow}`;
+          occupied.add(key);
+          placed.push({ piece, col, row: lastRow });
         }
-        let row = baseRow;
-        let key = `${col},${row}`;
-        while (occupied.has(key) && row >= minRow) {
-          row--;
-          key = `${col},${row}`;
+      }
+      if (byType[PIECE_TYPES.PAWN]) {
+        let col = 0;
+        for (const piece of byType[PIECE_TYPES.PAWN]) {
+          while (col < cols && occupied.has(`${col},${pawnRow}`)) col++;
+          if (col >= cols) break;
+          occupied.add(`${col},${pawnRow}`);
+          placed.push({ piece, col, row: pawnRow });
+          col++;
         }
-        if (occupied.has(key)) {
-          for (let dc = 1; dc < cols; dc++) {
-            for (const tryCol of [col + dc, col - dc]) {
-              if (tryCol >= 0 && tryCol < cols) {
-                key = `${tryCol},${baseRow}`;
-                if (!occupied.has(key)) {
-                  col = tryCol;
-                  row = baseRow;
-                  break;
-                }
-              }
-            }
-            if (!occupied.has(`${col},${row}`)) break;
+      }
+      const remaining = [];
+      for (const type of Object.keys(byType)) {
+        if (type === PIECE_TYPES.PAWN) continue;
+        for (const piece of byType[type]) {
+          remaining.push(piece);
+        }
+      }
+      let overflowRow = lastRow - 2;
+      let overflowCol = 0;
+      for (const piece of remaining) {
+        while (overflowRow >= Math.floor(rows * 0.5)) {
+          const key = `${overflowCol},${overflowRow}`;
+          if (!occupied.has(key)) {
+            occupied.add(key);
+            placed.push({ piece, col: overflowCol, row: overflowRow });
+            overflowCol++;
+            break;
+          }
+          overflowCol++;
+          if (overflowCol >= cols) {
+            overflowCol = 0;
+            overflowRow--;
           }
         }
-        occupied.add(`${col},${row}`);
-        placed.push({ piece, col, row });
-        count++;
       }
       return placed;
     }
@@ -1615,8 +1647,8 @@
       this.baseAIDifficulty = 1;
     }
     getAIDifficulty(floor) {
-      if (floor <= 1) return 1;
-      if (floor <= 2) return 2;
+      if (floor <= 2) return 1;
+      if (floor <= 4) return 2;
       if (floor <= 6) return 3;
       if (floor <= 8) return 4;
       return 5;
@@ -1760,6 +1792,7 @@
       this.encounterGenerator = null;
       this.rewardTable = null;
       this.shop = null;
+      this.prisoners = {};
       this.map = [];
       this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
       this.isActive = false;
@@ -1779,6 +1812,7 @@
       this.currentFloor = 1;
       this.currentNode = null;
       this.relicSystem = new RelicSystem(this.eventBus);
+      this.prisoners = {};
       this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
       this.applyArmyAbility(army);
       this.map = this.floorGenerator.generateMap(TOTAL_FLOORS);
@@ -1786,6 +1820,7 @@
       this.eventBus.emit("runStarted", { army, seed: this.seed });
     }
     applyArmyAbility(army) {
+      if (!army.ability) return;
       switch (army.ability) {
         case "earlyPromotion":
           break;
@@ -1877,6 +1912,11 @@
           rosterPiece.promotedFrom = bp.promotedFrom;
         }
       }
+      if (result.capturedByPlayer) {
+        for (const captured of result.capturedByPlayer) {
+          this.addPrisoner(captured.type);
+        }
+      }
       return this.rewardTable.getBattleRewards(this.currentFloor, result.isElite);
     }
     onBattleLost() {
@@ -1916,6 +1956,26 @@
     addRelic(relic) {
       this.relicSystem.addRelic(relic);
     }
+    addPrisoner(type) {
+      if (type === PIECE_TYPES.KING) return;
+      if (!this.prisoners[type]) this.prisoners[type] = 0;
+      this.prisoners[type]++;
+    }
+    convertPrisoners(type) {
+      if ((this.prisoners[type] || 0) < 3) return false;
+      if (this.roster.length >= ROSTER_LIMIT) return false;
+      this.prisoners[type] -= 3;
+      this.recruitPiece(type);
+      return true;
+    }
+    releasePrisoner(type) {
+      if ((this.prisoners[type] || 0) < 1) return 0;
+      this.prisoners[type]--;
+      const ransom = { pawn: 2, knight: 4, bishop: 4, rook: 6, queen: 10 };
+      const gold = ransom[type] || 2;
+      this.gold += gold;
+      return gold;
+    }
     generateShop() {
       const ownedIds = this.relicSystem.ownedRelics.map((r) => r.id);
       return this.shop.generate(this.currentFloor, ownedIds);
@@ -1941,6 +2001,7 @@
         gold: this.gold,
         currentFloor: this.currentFloor,
         relics: this.relicSystem.serialize(),
+        prisoners: { ...this.prisoners },
         stats: { ...this.stats },
         isActive: this.isActive
       };
@@ -1953,11 +2014,12 @@
       this.rewardTable = new RewardTable(this.rng);
       this.shop = new Shop(this.rng, this.eventBus);
       this.armyId = data.armyId;
-      this.armyAbility = ARMIES[data.armyId]?.ability;
+      this.armyAbility = ARMIES[data.armyId]?.ability || null;
       this.roster = data.roster.map((p) => Piece.deserialize(p));
       this.gold = data.gold;
       this.currentFloor = data.currentFloor;
       this.relicSystem.deserialize(data.relics);
+      this.prisoners = data.prisoners || {};
       this.stats = data.stats;
       this.isActive = data.isActive;
       this.map = this.floorGenerator.generateMap(TOTAL_FLOORS);
@@ -2146,6 +2208,187 @@
     }
   };
 
+  // src/ui/UITheme.js
+  var UITheme = class {
+    static _patternCanvas = null;
+    static getChessPattern() {
+      if (this._patternCanvas) return this._patternCanvas;
+      const c = document.createElement("canvas");
+      c.width = 40;
+      c.height = 40;
+      const x = c.getContext("2d");
+      x.fillStyle = "rgba(255,255,255,0.025)";
+      x.fillRect(0, 0, 20, 20);
+      x.fillRect(20, 20, 20, 20);
+      this._patternCanvas = c;
+      return c;
+    }
+    static drawBackground(ctx, w, h) {
+      ctx.fillStyle = UI_COLORS.bg;
+      ctx.fillRect(0, 0, w, h);
+      const pattern = ctx.createPattern(this.getChessPattern(), "repeat");
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, w, h);
+      const grad = ctx.createRadialGradient(w / 2, h * 0.35, 0, w / 2, h * 0.35, w * 0.65);
+      grad.addColorStop(0, "rgba(55, 40, 18, 0.12)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+    static drawVignette(ctx, w, h, strength = 0.5) {
+      const grad = ctx.createRadialGradient(w / 2, h / 2, w * 0.2, w / 2, h / 2, w * 0.75);
+      grad.addColorStop(0, "rgba(0,0,0,0)");
+      grad.addColorStop(1, `rgba(0,0,0,${strength})`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+    static roundRect(ctx, x, y, w, h, r) {
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y, x + w, y + r, r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+      ctx.lineTo(x + r, y + h);
+      ctx.arcTo(x, y + h, x, y + h - r, r);
+      ctx.lineTo(x, y + r);
+      ctx.arcTo(x, y, x + r, y, r);
+    }
+    static drawPanel(ctx, x, y, w, h, opts = {}) {
+      const r = opts.radius || 8;
+      const fill = opts.fill || UI_COLORS.panel;
+      const border = opts.border || UI_COLORS.panelBorder;
+      const highlight = opts.highlight || false;
+      const glow = opts.glow || false;
+      ctx.save();
+      if (opts.shadow !== false) {
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = 16;
+        ctx.shadowOffsetY = 4;
+      }
+      ctx.beginPath();
+      this.roundRect(ctx, x, y, w, h, r);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      this.roundRect(ctx, x, y, w, h, r);
+      ctx.strokeStyle = highlight ? UI_COLORS.accent : border;
+      ctx.lineWidth = highlight ? 2 : 1;
+      ctx.stroke();
+      if (glow) {
+        ctx.save();
+        ctx.beginPath();
+        this.roundRect(ctx, x, y, w, h, r);
+        ctx.shadowColor = UI_COLORS.accent;
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = "rgba(201, 168, 78, 0.25)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.beginPath();
+      ctx.moveTo(x + r + 2, y + 0.5);
+      ctx.lineTo(x + w - r - 2, y + 0.5);
+      ctx.strokeStyle = "rgba(255,255,255,0.04)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    static drawTitle(ctx, text, x, y, size = 48) {
+      ctx.save();
+      ctx.font = `bold ${size}px Georgia, 'Times New Roman', serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(200, 168, 78, 0.35)";
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = UI_COLORS.accent;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+    static drawDivider(ctx, x, y, w) {
+      const midX = x + w / 2;
+      const leftGrad = ctx.createLinearGradient(x, y, midX - 10, y);
+      leftGrad.addColorStop(0, "rgba(200, 168, 78, 0)");
+      leftGrad.addColorStop(1, "rgba(200, 168, 78, 0.25)");
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(midX - 10, y);
+      ctx.strokeStyle = leftGrad;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(midX, y - 3);
+      ctx.lineTo(midX + 3, y);
+      ctx.lineTo(midX, y + 3);
+      ctx.lineTo(midX - 3, y);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(200, 168, 78, 0.4)";
+      ctx.fill();
+      const rightGrad = ctx.createLinearGradient(midX + 10, y, x + w, y);
+      rightGrad.addColorStop(0, "rgba(200, 168, 78, 0.25)");
+      rightGrad.addColorStop(1, "rgba(200, 168, 78, 0)");
+      ctx.beginPath();
+      ctx.moveTo(midX + 10, y);
+      ctx.lineTo(x + w, y);
+      ctx.strokeStyle = rightGrad;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    static drawButton(ctx, x, y, w, h, text, isHover, opts = {}) {
+      const r = 6;
+      const fontSize = opts.fontSize || 14;
+      ctx.beginPath();
+      this.roundRect(ctx, x, y, w, h, r);
+      if (isHover) {
+        const grad = ctx.createLinearGradient(x, y, x, y + h);
+        const hc = opts.hoverColor || "rgba(200, 168, 78, 0.2)";
+        grad.addColorStop(0, hc);
+        grad.addColorStop(1, "rgba(200, 168, 78, 0.06)");
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = opts.fill || UI_COLORS.panel;
+      }
+      ctx.fill();
+      ctx.beginPath();
+      this.roundRect(ctx, x, y, w, h, r);
+      ctx.strokeStyle = isHover ? opts.hoverBorder || UI_COLORS.accent : opts.border || UI_COLORS.panelBorder;
+      ctx.lineWidth = isHover ? 1.5 : 1;
+      ctx.stroke();
+      if (isHover) {
+        ctx.save();
+        ctx.beginPath();
+        this.roundRect(ctx, x, y, w, h, r);
+        ctx.shadowColor = opts.hoverBorder || UI_COLORS.accent;
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = "rgba(200, 168, 78, 0.15)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.font = `bold ${fontSize}px monospace`;
+      ctx.fillStyle = isHover ? opts.hoverText || UI_COLORS.accent : opts.textColor || UI_COLORS.text;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, x + w / 2, y + h / 2);
+    }
+    static wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(" ");
+      let line = "";
+      let lineNum = 0;
+      for (const word of words) {
+        const test = line + (line ? " " : "") + word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          ctx.fillText(line, x, y + lineNum * lineHeight);
+          line = word;
+          lineNum++;
+        } else {
+          line = test;
+        }
+      }
+      if (line) ctx.fillText(line, x, y + lineNum * lineHeight);
+      return lineNum + 1;
+    }
+  };
+
   // src/ui/Button.js
   var Button = class {
     constructor(x, y, w, h, text, options = {}) {
@@ -2155,7 +2398,8 @@
       this.h = h;
       this.text = text;
       this.color = options.color || UI_COLORS.panel;
-      this.hoverColor = options.hoverColor || UI_COLORS.accent;
+      this.hoverColor = options.hoverColor || null;
+      this.hoverBorder = options.hoverBorder || null;
       this.textColor = options.textColor || UI_COLORS.text;
       this.borderColor = options.borderColor || UI_COLORS.panelBorder;
       this.fontSize = options.fontSize || 14;
@@ -2176,16 +2420,14 @@
       this.isHovered = this.contains(x, y);
     }
     render(ctx) {
-      ctx.fillStyle = this.isHovered ? this.hoverColor : this.color;
-      ctx.fillRect(this.x, this.y, this.w, this.h);
-      ctx.strokeStyle = this.isHovered ? this.hoverColor : this.borderColor;
-      ctx.lineWidth = this.isHovered ? 2 : 1;
-      ctx.strokeRect(this.x, this.y, this.w, this.h);
-      ctx.font = `bold ${this.fontSize}px monospace`;
-      ctx.fillStyle = this.textColor;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(this.text, this.x + this.w / 2, this.y + this.h / 2);
+      UITheme.drawButton(ctx, this.x, this.y, this.w, this.h, this.text, this.isHovered, {
+        fill: this.color,
+        border: this.borderColor,
+        textColor: this.textColor,
+        fontSize: this.fontSize,
+        hoverColor: this.hoverColor,
+        hoverBorder: this.hoverBorder
+      });
     }
   };
 
@@ -2216,28 +2458,27 @@
     createButtons() {
       const w = this.renderer.width;
       const h = this.renderer.height;
-      const btnW = 200;
-      const btnH = 44;
+      const btnW = 220;
+      const btnH = 46;
       const x = (w - btnW) / 2;
-      const startY = h / 2 + 20;
-      const gap = 12;
+      const startY = h / 2 + 40;
+      const gap = 14;
       this.buttons = [];
       this.buttons.push(new Button(x, startY, btnW, btnH, "New Game", {
-        color: UI_COLORS.panel,
-        hoverColor: UI_COLORS.accent,
-        onClick: () => this.stateMachine.change("armySelect")
+        onClick: () => {
+          if (this.runManager) {
+            this.runManager.startRun("standard");
+            this.stateMachine.change("map");
+          }
+        }
       }));
       const hasSave = this.saveManager && this.saveManager.hasSave();
       if (hasSave) {
         this.buttons.push(new Button(x, startY + btnH + gap, btnW, btnH, "Continue", {
-          color: UI_COLORS.panel,
-          hoverColor: UI_COLORS.success,
           onClick: () => this.loadGame()
         }));
       }
       this.buttons.push(new Button(x, startY + (hasSave ? 2 : 1) * (btnH + gap), btnW, btnH, "Settings", {
-        color: UI_COLORS.panel,
-        hoverColor: UI_COLORS.info,
         onClick: () => {
           if (this.stateMachine.states.has("settings")) {
             this.stateMachine.change("settings");
@@ -2254,7 +2495,10 @@
       };
       this.keyHandler = (data) => {
         if (data.code === "Enter") {
-          this.stateMachine.change("armySelect");
+          if (this.runManager) {
+            this.runManager.startRun("standard");
+            this.stateMachine.change("map");
+          }
         }
       };
       this.eventBus.on("click", this.clickHandler);
@@ -2276,167 +2520,367 @@
     render(ctx) {
       const w = this.renderer.width;
       const h = this.renderer.height;
-      const pulse = Math.sin(this.titlePulse * 2) * 0.1 + 0.9;
-      ctx.font = `bold ${Math.floor(64 * pulse)}px monospace`;
-      ctx.fillStyle = UI_COLORS.text;
+      UITheme.drawBackground(ctx, w, h);
+      UITheme.drawVignette(ctx, w, h, 0.6);
+      const pulse = Math.sin(this.titlePulse * 1.5) * 0.04 + 1;
+      UITheme.drawTitle(ctx, "BLANCA", w / 2, h / 2 - 80, Math.floor(56 * pulse));
+      ctx.font = "15px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("BLANCA", w / 2, h / 2 - 80);
-      ctx.font = "16px monospace";
-      ctx.fillStyle = UI_COLORS.textDim;
-      ctx.fillText("A Chess Roguelike", w / 2, h / 2 - 30);
+      ctx.fillText("A Chess Roguelike", w / 2, h / 2 - 25);
+      UITheme.drawDivider(ctx, w / 2 - 120, h / 2 + 12, 240);
       for (const btn of this.buttons) {
         btn.render(ctx);
       }
       ctx.font = "11px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
       ctx.textAlign = "center";
-      ctx.fillText("v0.1 \u2014 Chess IS the game", w / 2, h - 24);
+      ctx.globalAlpha = 0.5;
+      ctx.fillText("v0.1  \u2014  Chess IS the game", w / 2, h - 24);
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // src/render/PieceSetLoader.js
+  var CDN_BASE = "https://cdn.jsdelivr.net/gh/lichess-org/lila@master/public/piece";
+  var PIECE_SETS = [
+    "original",
+    "alpha",
+    "anarcandy",
+    "caliente",
+    "california",
+    "cardinal",
+    "cburnett",
+    "celtic",
+    "chess7",
+    "chessnut",
+    "companion",
+    "cooke",
+    "disguised",
+    "dubrovny",
+    "fantasy",
+    "fresca",
+    "gioco",
+    "governor",
+    "horsey",
+    "icpieces",
+    "kosal",
+    "leipzig",
+    "letter",
+    "maestro",
+    "merida",
+    "monarchy",
+    "mono",
+    "mpchess",
+    "pirouetti",
+    "pixel",
+    "reillycraig",
+    "riohacha",
+    "shapes",
+    "spatial",
+    "staunty",
+    "tatiana"
+  ];
+  var PIECE_FILE_MAP = {
+    pawn: "P",
+    knight: "N",
+    bishop: "B",
+    rook: "R",
+    queen: "Q",
+    king: "K"
+  };
+  var TEAM_PREFIX = {
+    player: "w",
+    enemy: "b"
+  };
+  var STORAGE_KEY = "blanca_pieceSet";
+  var PieceSetLoader = class {
+    static _cache = {};
+    // { setName: { 'player_pawn': Image, ... } }
+    static _loading = {};
+    // { setName: Promise }
+    static _currentSet = null;
+    static init() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      this._currentSet = saved && PIECE_SETS.includes(saved) ? saved : "original";
+      if (this._currentSet !== "original") {
+        this.loadSet(this._currentSet);
+      }
+    }
+    static getCurrentSet() {
+      return this._currentSet;
+    }
+    static setCurrentSet(name) {
+      this._currentSet = name;
+      localStorage.setItem(STORAGE_KEY, name);
+      if (name !== "original") {
+        this.loadSet(name);
+      }
+    }
+    static getImage(team, pieceType) {
+      if (this._currentSet === "original") return null;
+      const set = this._cache[this._currentSet];
+      if (!set) return null;
+      const key = `${team}_${pieceType}`;
+      return set[key] || null;
+    }
+    static isLoaded(setName) {
+      if (setName === "original") return true;
+      return !!this._cache[setName];
+    }
+    static loadSet(setName) {
+      if (setName === "original") return Promise.resolve();
+      if (this._cache[setName]) return Promise.resolve();
+      if (this._loading[setName]) return this._loading[setName];
+      const images = {};
+      const promises = [];
+      for (const [team, prefix] of Object.entries(TEAM_PREFIX)) {
+        for (const [pieceType, fileLetter] of Object.entries(PIECE_FILE_MAP)) {
+          const url = `${CDN_BASE}/${setName}/${prefix}${fileLetter}.svg`;
+          const key = `${team}_${pieceType}`;
+          const p = new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+              images[key] = img;
+              resolve();
+            };
+            img.onerror = () => {
+              resolve();
+            };
+            img.src = url;
+          });
+          promises.push(p);
+        }
+      }
+      this._loading[setName] = Promise.all(promises).then(() => {
+        this._cache[setName] = images;
+        delete this._loading[setName];
+      });
+      return this._loading[setName];
     }
   };
 
   // src/render/PieceRenderer.js
+  var PIECE_THEME = {
+    player: {
+      bodyTop: "#f5ece0",
+      bodyBot: "#c8b898",
+      outline: "#6a5d4a",
+      highlight: "rgba(255, 255, 255, 0.6)",
+      shadow: "rgba(80, 60, 40, 0.25)",
+      accent: "#c9a84e",
+      eye: "#4a4035"
+    },
+    enemy: {
+      bodyTop: "#3a3248",
+      bodyBot: "#1a1525",
+      outline: "#8a6070",
+      highlight: "rgba(180, 140, 160, 0.25)",
+      shadow: "rgba(0, 0, 0, 0.35)",
+      accent: "#c04050",
+      eye: "#d08888"
+    }
+  };
   var PieceRenderer = class {
     static draw(ctx, piece, x, y, size) {
-      const isPlayer = piece.team === TEAMS.PLAYER;
-      const fill = isPlayer ? PIECE_COLORS.player : PIECE_COLORS.enemy;
-      const stroke = isPlayer ? PIECE_COLORS.playerOutline : PIECE_COLORS.enemyOutline;
+      const t = piece.team === TEAMS.PLAYER ? PIECE_THEME.player : PIECE_THEME.enemy;
       const center = size / 2;
       const scale = size / 80;
+      const img = PieceSetLoader.getImage(piece.team, piece.type);
+      if (img) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.fillStyle = t.shadow;
+        ctx.beginPath();
+        ctx.ellipse(center, center + 24 * scale, 16 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const pad = size * 0.05;
+        ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
+        if (piece.modifiers.length > 0) {
+          this.drawModifierIndicator(ctx, size, scale, t);
+        }
+        ctx.restore();
+        return;
+      }
       ctx.save();
       ctx.translate(x, y);
+      ctx.fillStyle = t.shadow;
+      ctx.beginPath();
+      ctx.ellipse(center, center + 24 * scale, 16 * scale, 5 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
       switch (piece.type) {
         case PIECE_TYPES.PAWN:
-          this.drawPawn(ctx, center, scale, fill, stroke);
+          this.drawPawn(ctx, center, scale, t);
           break;
         case PIECE_TYPES.KNIGHT:
-          this.drawKnight(ctx, center, scale, fill, stroke);
+          this.drawKnight(ctx, center, scale, t);
           break;
         case PIECE_TYPES.BISHOP:
-          this.drawBishop(ctx, center, scale, fill, stroke);
+          this.drawBishop(ctx, center, scale, t);
           break;
         case PIECE_TYPES.ROOK:
-          this.drawRook(ctx, center, scale, fill, stroke);
+          this.drawRook(ctx, center, scale, t);
           break;
         case PIECE_TYPES.QUEEN:
-          this.drawQueen(ctx, center, scale, fill, stroke);
+          this.drawQueen(ctx, center, scale, t);
           break;
         case PIECE_TYPES.KING:
-          this.drawKing(ctx, center, scale, fill, stroke);
+          this.drawKing(ctx, center, scale, t);
           break;
       }
       if (piece.modifiers.length > 0) {
-        this.drawModifierIndicator(ctx, size, scale);
+        this.drawModifierIndicator(ctx, size, scale, t);
       }
       ctx.restore();
     }
-    static drawPawn(ctx, c, s, fill, stroke) {
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2 * s;
+    static _bodyGrad(ctx, c, s, t, top, bot) {
+      const grad = ctx.createLinearGradient(c, c + top * s, c, c + bot * s);
+      grad.addColorStop(0, t.bodyTop);
+      grad.addColorStop(1, t.bodyBot);
+      return grad;
+    }
+    static _drawBase(ctx, c, s, t) {
+      const grad = ctx.createLinearGradient(c, c + 20 * s, c, c + 28 * s);
+      grad.addColorStop(0, t.bodyBot);
+      grad.addColorStop(1, t.bodyTop);
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(c - 18 * s, c + 26 * s);
+      ctx.lineTo(c + 18 * s, c + 26 * s);
+      ctx.lineTo(c + 16 * s, c + 21 * s);
+      ctx.lineTo(c - 16 * s, c + 21 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    static _drawHighlight(ctx, c, s, yTop, width) {
+      ctx.beginPath();
+      ctx.moveTo(c - width * s, yTop);
+      ctx.quadraticCurveTo(c, yTop - 3 * s, c + width * s, yTop);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+      ctx.lineWidth = 1.5 * s;
+      ctx.stroke();
+    }
+    static drawPawn(ctx, c, s, t) {
+      ctx.fillStyle = this._bodyGrad(ctx, c, s, t, -22, 22);
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
       ctx.arc(c, c - 10 * s, 10 * s, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(c - 14 * s, c + 22 * s);
-      ctx.lineTo(c - 8 * s, c);
-      ctx.lineTo(c + 8 * s, c);
-      ctx.lineTo(c + 14 * s, c + 22 * s);
+      ctx.moveTo(c - 14 * s, c + 21 * s);
+      ctx.quadraticCurveTo(c - 10 * s, c + 4 * s, c - 7 * s, c - 1 * s);
+      ctx.lineTo(c + 7 * s, c - 1 * s);
+      ctx.quadraticCurveTo(c + 10 * s, c + 4 * s, c + 14 * s, c + 21 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(c - 18 * s, c + 26 * s);
-      ctx.lineTo(c + 18 * s, c + 26 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
-      ctx.closePath();
+      ctx.arc(c - 3 * s, c - 14 * s, 4 * s, 0, Math.PI * 2);
+      ctx.fillStyle = t.highlight;
       ctx.fill();
-      ctx.stroke();
+      this._drawBase(ctx, c, s, t);
     }
-    static drawKnight(ctx, c, s, fill, stroke) {
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2 * s;
-      ctx.beginPath();
-      ctx.moveTo(c - 6 * s, c - 22 * s);
-      ctx.quadraticCurveTo(c - 18 * s, c - 16 * s, c - 16 * s, c - 2 * s);
-      ctx.quadraticCurveTo(c - 18 * s, c + 8 * s, c - 10 * s, c + 14 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c + 10 * s, c + 6 * s);
-      ctx.quadraticCurveTo(c + 16 * s, c - 6 * s, c + 10 * s, c - 16 * s);
-      ctx.quadraticCurveTo(c + 4 * s, c - 26 * s, c - 6 * s, c - 22 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      const eyeColor = fill === "#ffffff" ? "#333" : "#aaa";
-      ctx.fillStyle = eyeColor;
-      ctx.beginPath();
-      ctx.arc(c - 4 * s, c - 12 * s, 2 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = fill;
-      ctx.beginPath();
-      ctx.moveTo(c - 18 * s, c + 26 * s);
-      ctx.lineTo(c + 18 * s, c + 26 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-    static drawBishop(ctx, c, s, fill, stroke) {
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2 * s;
-      ctx.beginPath();
-      ctx.arc(c, c - 24 * s, 3 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(c, c - 20 * s);
-      ctx.quadraticCurveTo(c - 14 * s, c - 8 * s, c - 12 * s, c + 8 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c + 12 * s, c + 8 * s);
-      ctx.quadraticCurveTo(c + 14 * s, c - 8 * s, c, c - 20 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.strokeStyle = stroke;
+    static drawKnight(ctx, c, s, t) {
+      ctx.fillStyle = this._bodyGrad(ctx, c, s, t, -26, 22);
+      ctx.strokeStyle = t.outline;
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
-      ctx.moveTo(c - 4 * s, c - 10 * s);
-      ctx.lineTo(c + 4 * s, c - 2 * s);
-      ctx.stroke();
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2 * s;
-      ctx.beginPath();
-      ctx.moveTo(c - 18 * s, c + 26 * s);
-      ctx.lineTo(c + 18 * s, c + 26 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
+      ctx.moveTo(c - 4 * s, c - 24 * s);
+      ctx.quadraticCurveTo(c - 14 * s, c - 22 * s, c - 16 * s, c - 12 * s);
+      ctx.quadraticCurveTo(c - 18 * s, c - 4 * s, c - 14 * s, c + 2 * s);
+      ctx.quadraticCurveTo(c - 16 * s, c + 10 * s, c - 12 * s, c + 14 * s);
+      ctx.lineTo(c - 16 * s, c + 21 * s);
+      ctx.lineTo(c + 16 * s, c + 21 * s);
+      ctx.lineTo(c + 10 * s, c + 6 * s);
+      ctx.quadraticCurveTo(c + 14 * s, c - 4 * s, c + 10 * s, c - 14 * s);
+      ctx.quadraticCurveTo(c + 6 * s, c - 24 * s, c - 4 * s, c - 24 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-    }
-    static drawRook(ctx, c, s, fill, stroke) {
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
+      ctx.beginPath();
+      ctx.moveTo(c - 2 * s, c - 24 * s);
+      ctx.lineTo(c - 6 * s, c - 30 * s);
+      ctx.lineTo(c + 2 * s, c - 26 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = t.eye;
+      ctx.beginPath();
+      ctx.ellipse(c - 6 * s, c - 14 * s, 2.5 * s, 2 * s, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.beginPath();
+      ctx.arc(c - 5 * s, c - 15 * s, 0.8 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = t.eye;
+      ctx.beginPath();
+      ctx.arc(c - 14 * s, c - 2 * s, 1.5 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(c + 4 * s, c - 18 * s);
+      ctx.quadraticCurveTo(c + 10 * s, c - 10 * s, c + 8 * s, c);
+      ctx.strokeStyle = t.highlight;
       ctx.lineWidth = 2 * s;
+      ctx.stroke();
+      this._drawBase(ctx, c, s, t);
+    }
+    static drawBishop(ctx, c, s, t) {
+      ctx.fillStyle = this._bodyGrad(ctx, c, s, t, -28, 22);
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.arc(c, c - 26 * s, 3 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(c, c - 22 * s);
+      ctx.quadraticCurveTo(c - 15 * s, c - 8 * s, c - 12 * s, c + 8 * s);
+      ctx.lineTo(c - 16 * s, c + 21 * s);
+      ctx.lineTo(c + 16 * s, c + 21 * s);
+      ctx.lineTo(c + 12 * s, c + 8 * s);
+      ctx.quadraticCurveTo(c + 15 * s, c - 8 * s, c, c - 22 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(c - 4 * s, c - 12 * s);
+      ctx.lineTo(c + 5 * s, c - 2 * s);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(c, c + 10 * s, 12 * s, 3 * s, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+      ctx.fillStyle = t.highlight;
+      ctx.beginPath();
+      ctx.arc(c - 1 * s, c - 27 * s, 1.2 * s, 0, Math.PI * 2);
+      ctx.fill();
+      this._drawBase(ctx, c, s, t);
+    }
+    static drawRook(ctx, c, s, t) {
+      ctx.fillStyle = this._bodyGrad(ctx, c, s, t, -24, 22);
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
       ctx.moveTo(c - 16 * s, c - 14 * s);
       ctx.lineTo(c - 16 * s, c - 22 * s);
-      ctx.lineTo(c - 8 * s, c - 22 * s);
-      ctx.lineTo(c - 8 * s, c - 16 * s);
+      ctx.lineTo(c - 9 * s, c - 22 * s);
+      ctx.lineTo(c - 9 * s, c - 16 * s);
       ctx.lineTo(c - 3 * s, c - 16 * s);
       ctx.lineTo(c - 3 * s, c - 22 * s);
       ctx.lineTo(c + 3 * s, c - 22 * s);
       ctx.lineTo(c + 3 * s, c - 16 * s);
-      ctx.lineTo(c + 8 * s, c - 16 * s);
-      ctx.lineTo(c + 8 * s, c - 22 * s);
+      ctx.lineTo(c + 9 * s, c - 16 * s);
+      ctx.lineTo(c + 9 * s, c - 22 * s);
       ctx.lineTo(c + 16 * s, c - 22 * s);
       ctx.lineTo(c + 16 * s, c - 14 * s);
       ctx.closePath();
@@ -2444,111 +2888,155 @@
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(c - 14 * s, c - 14 * s);
-      ctx.lineTo(c - 12 * s, c + 14 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c + 12 * s, c + 14 * s);
+      ctx.lineTo(c - 12 * s, c + 12 * s);
+      ctx.lineTo(c - 16 * s, c + 21 * s);
+      ctx.lineTo(c + 16 * s, c + 21 * s);
+      ctx.lineTo(c + 12 * s, c + 12 * s);
       ctx.lineTo(c + 14 * s, c - 14 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      ctx.fillStyle = t.outline;
+      ctx.fillRect(c - 2 * s, c - 6 * s, 4 * s, 10 * s);
+      ctx.fillStyle = t.highlight;
+      ctx.fillRect(c - 15 * s, c - 21 * s, 5 * s, 2 * s);
+      ctx.fillRect(c - 2 * s, c - 21 * s, 5 * s, 2 * s);
+      ctx.fillRect(c + 10 * s, c - 21 * s, 5 * s, 2 * s);
+      this._drawBase(ctx, c, s, t);
+    }
+    static drawQueen(ctx, c, s, t) {
+      ctx.fillStyle = this._bodyGrad(ctx, c, s, t, -28, 22);
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1.5 * s;
+      const crownTips = [
+        { x: -18, y: -24 },
+        { x: -9, y: -28 },
+        { x: 0, y: -30 },
+        { x: 9, y: -28 },
+        { x: 18, y: -24 }
+      ];
       ctx.beginPath();
-      ctx.moveTo(c - 18 * s, c + 26 * s);
-      ctx.lineTo(c + 18 * s, c + 26 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
+      ctx.moveTo(c - 16 * s, c - 12 * s);
+      ctx.lineTo(c + crownTips[0].x * s, c + crownTips[0].y * s);
+      ctx.lineTo(c - 12 * s, c - 14 * s);
+      ctx.lineTo(c + crownTips[1].x * s, c + crownTips[1].y * s);
+      ctx.lineTo(c - 3 * s, c - 16 * s);
+      ctx.lineTo(c + crownTips[2].x * s, c + crownTips[2].y * s);
+      ctx.lineTo(c + 3 * s, c - 16 * s);
+      ctx.lineTo(c + crownTips[3].x * s, c + crownTips[3].y * s);
+      ctx.lineTo(c + 12 * s, c - 14 * s);
+      ctx.lineTo(c + crownTips[4].x * s, c + crownTips[4].y * s);
+      ctx.lineTo(c + 16 * s, c - 12 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-    }
-    static drawQueen(ctx, c, s, fill, stroke) {
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2 * s;
-      const points = 5;
-      for (let i = 0; i < points; i++) {
-        const angle = i / points * Math.PI - Math.PI / 2;
-        const px = c + Math.cos(angle) * 14 * s;
-        const py = c - 20 * s + Math.sin(angle) * 4 * s;
+      ctx.fillStyle = t.accent;
+      for (const tip of crownTips) {
         ctx.beginPath();
-        ctx.arc(px, py - 4 * s, 2.5 * s, 0, Math.PI * 2);
+        ctx.arc(c + tip.x * s, c + tip.y * s, 2 * s, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
       }
+      ctx.fillStyle = this._bodyGrad(ctx, c, s, t, -14, 22);
       ctx.beginPath();
-      ctx.moveTo(c - 16 * s, c - 14 * s);
-      ctx.lineTo(c - 20 * s, c - 24 * s);
-      ctx.lineTo(c - 8 * s, c - 10 * s);
-      ctx.lineTo(c, c - 26 * s);
-      ctx.lineTo(c + 8 * s, c - 10 * s);
-      ctx.lineTo(c + 20 * s, c - 24 * s);
-      ctx.lineTo(c + 16 * s, c - 14 * s);
+      ctx.moveTo(c - 16 * s, c - 12 * s);
+      ctx.quadraticCurveTo(c - 15 * s, c + 6 * s, c - 16 * s, c + 21 * s);
+      ctx.lineTo(c + 16 * s, c + 21 * s);
+      ctx.quadraticCurveTo(c + 15 * s, c + 6 * s, c + 16 * s, c - 12 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(c - 16 * s, c - 14 * s);
-      ctx.quadraticCurveTo(c - 14 * s, c + 6 * s, c - 16 * s, c + 22 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.quadraticCurveTo(c + 14 * s, c + 6 * s, c + 16 * s, c - 14 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(c - 18 * s, c + 26 * s);
-      ctx.lineTo(c + 18 * s, c + 26 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-    static drawKing(ctx, c, s, fill, stroke) {
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = t.accent;
       ctx.lineWidth = 2 * s;
-      ctx.fillRect(c - 2 * s, c - 30 * s, 4 * s, 14 * s);
-      ctx.strokeRect(c - 2 * s, c - 30 * s, 4 * s, 14 * s);
-      ctx.fillRect(c - 6 * s, c - 26 * s, 12 * s, 4 * s);
-      ctx.strokeRect(c - 6 * s, c - 26 * s, 12 * s, 4 * s);
       ctx.beginPath();
-      ctx.moveTo(c - 16 * s, c - 10 * s);
-      ctx.quadraticCurveTo(c, c - 20 * s, c + 16 * s, c - 10 * s);
+      ctx.moveTo(c - 15 * s, c + 2 * s);
+      ctx.lineTo(c + 15 * s, c + 2 * s);
+      ctx.stroke();
+      this._drawHighlight(ctx, c, s, c - 8 * s, 10);
+      this._drawBase(ctx, c, s, t);
+    }
+    static drawKing(ctx, c, s, t) {
+      ctx.fillStyle = this._bodyGrad(ctx, c, s, t, -30, 22);
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(c - 2.5 * s, c - 30 * s);
+      ctx.lineTo(c + 2.5 * s, c - 30 * s);
+      ctx.lineTo(c + 2.5 * s, c - 26 * s);
+      ctx.lineTo(c + 7 * s, c - 26 * s);
+      ctx.lineTo(c + 7 * s, c - 22 * s);
+      ctx.lineTo(c + 2.5 * s, c - 22 * s);
+      ctx.lineTo(c + 2.5 * s, c - 17 * s);
+      ctx.lineTo(c - 2.5 * s, c - 17 * s);
+      ctx.lineTo(c - 2.5 * s, c - 22 * s);
+      ctx.lineTo(c - 7 * s, c - 22 * s);
+      ctx.lineTo(c - 7 * s, c - 26 * s);
+      ctx.lineTo(c - 2.5 * s, c - 26 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(c - 16 * s, c - 10 * s);
-      ctx.quadraticCurveTo(c - 14 * s, c + 8 * s, c - 16 * s, c + 22 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.quadraticCurveTo(c + 14 * s, c + 8 * s, c + 16 * s, c - 10 * s);
+      ctx.quadraticCurveTo(c, c - 22 * s, c + 16 * s, c - 10 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2 * s;
       ctx.beginPath();
-      ctx.moveTo(c - 14 * s, c + 4 * s);
-      ctx.lineTo(c + 14 * s, c + 4 * s);
-      ctx.stroke();
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = stroke;
-      ctx.beginPath();
-      ctx.moveTo(c - 18 * s, c + 26 * s);
-      ctx.lineTo(c + 18 * s, c + 26 * s);
-      ctx.lineTo(c + 16 * s, c + 22 * s);
-      ctx.lineTo(c - 16 * s, c + 22 * s);
+      ctx.moveTo(c - 16 * s, c - 10 * s);
+      ctx.quadraticCurveTo(c - 15 * s, c + 8 * s, c - 16 * s, c + 21 * s);
+      ctx.lineTo(c + 16 * s, c + 21 * s);
+      ctx.quadraticCurveTo(c + 15 * s, c + 8 * s, c + 16 * s, c - 10 * s);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-    }
-    static drawModifierIndicator(ctx, size, s) {
-      ctx.fillStyle = "#ffd700";
+      ctx.fillStyle = t.accent;
       ctx.beginPath();
-      ctx.arc(size - 6 * s, 6 * s, 4 * s, 0, Math.PI * 2);
+      ctx.arc(c, c - 13 * s, 3.5 * s, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = "#b8860b";
+      ctx.strokeStyle = t.outline;
       ctx.lineWidth = 1 * s;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.beginPath();
+      ctx.arc(c - 1 * s, c - 14 * s, 1.2 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = t.accent;
+      ctx.lineWidth = 2 * s;
+      ctx.beginPath();
+      ctx.moveTo(c - 15 * s, c + 4 * s);
+      ctx.lineTo(c + 15 * s, c + 4 * s);
+      ctx.stroke();
+      ctx.fillStyle = t.accent;
+      ctx.fillRect(c - 3 * s, c + 1.5 * s, 6 * s, 5 * s);
+      ctx.strokeStyle = t.outline;
+      ctx.lineWidth = 1 * s;
+      ctx.strokeRect(c - 3 * s, c + 1.5 * s, 6 * s, 5 * s);
+      this._drawHighlight(ctx, c, s, c - 6 * s, 10);
+      this._drawBase(ctx, c, s, t);
+    }
+    static drawModifierIndicator(ctx, size, s, t) {
+      const x = size - 4 * s;
+      const y = 4 * s;
+      const r = 3.5 * s;
+      ctx.save();
+      ctx.shadowColor = t.accent;
+      ctx.shadowBlur = 6 * s;
+      ctx.fillStyle = t.accent;
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + r * 0.7, y);
+      ctx.lineTo(x, y + r);
+      ctx.lineTo(x - r * 0.7, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + r * 0.7, y);
+      ctx.lineTo(x, y + r);
+      ctx.lineTo(x - r * 0.7, y);
+      ctx.closePath();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 0.5 * s;
       ctx.stroke();
     }
   };
@@ -2587,11 +3075,11 @@
     }
     getCardBounds() {
       const cardW = 180;
-      const cardH = 240;
-      const gap = 20;
+      const cardH = 250;
+      const gap = 18;
       const totalW = this.armies.length * (cardW + gap) - gap;
       const startX = (this.renderer.width - totalW) / 2;
-      const y = this.renderer.height / 2 - cardH / 2 + 20;
+      const y = this.renderer.height / 2 - cardH / 2 + 24;
       return this.armies.map((_, i) => ({
         x: startX + i * (cardW + gap),
         y,
@@ -2641,29 +3129,39 @@
     update(dt) {
     }
     render(ctx) {
-      ctx.font = "bold 36px monospace";
-      ctx.fillStyle = UI_COLORS.text;
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      UITheme.drawBackground(ctx, w, h);
+      UITheme.drawVignette(ctx, w, h, 0.4);
+      UITheme.drawTitle(ctx, "Choose Your Army", w / 2, 55, 32);
+      ctx.font = "13px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("Choose Your Army", this.renderer.width / 2, 60);
-      ctx.font = "14px monospace";
-      ctx.fillStyle = UI_COLORS.textDim;
-      ctx.fillText("Select a starting army for your run", this.renderer.width / 2, 95);
+      ctx.fillText("Select a starting army for your run", w / 2, 90);
+      UITheme.drawDivider(ctx, w / 2 - 140, 110, 280);
       const bounds = this.getCardBounds();
       for (let i = 0; i < this.armies.length; i++) {
         const army = this.armies[i];
         const b = bounds[i];
         const isHover = this.hoverIndex === i;
         const isSelected = this.selectedIndex === i;
-        ctx.fillStyle = isHover || isSelected ? UI_COLORS.panel : UI_COLORS.bgLight;
-        ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.strokeStyle = isSelected ? army.color : isHover ? UI_COLORS.accent : UI_COLORS.panelBorder;
-        ctx.lineWidth = isSelected ? 3 : 1;
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
-        ctx.font = "bold 13px monospace";
+        const active = isHover || isSelected;
+        UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
+          highlight: active,
+          glow: isSelected,
+          fill: active ? "#1a1a28" : UI_COLORS.panel
+        });
+        ctx.beginPath();
+        UITheme.roundRect(ctx, b.x + 1, b.y + 1, b.w - 2, 3, 2);
         ctx.fillStyle = army.color;
+        ctx.globalAlpha = active ? 0.8 : 0.4;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.font = "bold 13px monospace";
+        ctx.fillStyle = active ? army.color : UI_COLORS.text;
         ctx.textAlign = "center";
-        ctx.fillText(army.name, b.x + b.w / 2, b.y + 22);
+        ctx.fillText(army.name, b.x + b.w / 2, b.y + 26);
         const pieceSize = 28;
         const piecesPerRow = 4;
         const pieceGap = 4;
@@ -2673,49 +3171,32 @@
           const row = Math.floor(j / piecesPerRow);
           const col = j % piecesPerRow;
           const px = pieceStartX + col * (pieceSize + pieceGap);
-          const py = b.y + 38 + row * (pieceSize + pieceGap);
+          const py = b.y + 44 + row * (pieceSize + pieceGap);
           const tempPiece = new Piece(army.pieces[j].type, TEAMS.PLAYER);
           PieceRenderer.draw(ctx, tempPiece, px, py, pieceSize);
         }
         ctx.font = "11px monospace";
         ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = "center";
-        const desc = army.description;
-        this.wrapText(ctx, desc, b.x + b.w / 2, b.y + 140, b.w - 16, 14);
+        UITheme.wrapText(ctx, army.description, b.x + b.w / 2, b.y + 148, b.w - 20, 14);
       }
       ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
       ctx.textAlign = "center";
-      ctx.fillText("Click to select  |  Arrow keys to browse  |  Enter to confirm", this.renderer.width / 2, this.renderer.height - 40);
-    }
-    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-      const words = text.split(" ");
-      let line = "";
-      let lines = [];
-      for (const word of words) {
-        const test = line + (line ? " " : "") + word;
-        if (ctx.measureText(test).width > maxWidth && line) {
-          lines.push(line);
-          line = word;
-        } else {
-          line = test;
-        }
-      }
-      if (line) lines.push(line);
-      for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], x, y + i * lineHeight);
-      }
+      ctx.globalAlpha = 0.6;
+      ctx.fillText("Click to select  |  Arrow keys to browse", w / 2, h - 40);
+      ctx.globalAlpha = 1;
     }
   };
 
   // src/states/MapState.js
   var NODE_COLORS = {
-    battle: "#e94560",
-    elite: "#ff9800",
-    shop: "#4caf50",
-    event: "#9c27b0",
-    rest: "#2196f3",
-    boss: "#ffd700"
+    battle: "#c04050",
+    elite: "#d0a040",
+    shop: "#5a9e6a",
+    event: "#8a5ab0",
+    rest: "#5080b0",
+    boss: "#c9a84e"
   };
   var NODE_LABELS = {
     battle: "Battle",
@@ -2725,6 +3206,44 @@
     rest: "Rest",
     boss: "BOSS"
   };
+  var NODE_ICONS = {
+    battle: "\u2694",
+    elite: "\u2620",
+    shop: "\u2666",
+    event: "?",
+    rest: "\u2665",
+    boss: "\u265A"
+  };
+  var PIECE_NAMES2 = {
+    pawn: "Pawn",
+    knight: "Knight",
+    bishop: "Bishop",
+    rook: "Rook",
+    queen: "Queen",
+    king: "King"
+  };
+  var RELIC_ICONS = {
+    freeMove: { symbol: "\u265A", color: "#c9a84e" },
+    // crown
+    captureStreak: { symbol: "\u2666", color: "#c04050" },
+    // diamond (blood)
+    earlyPromotion: { symbol: "\u2191", color: "#5a9e6a" },
+    // up arrow
+    pawnForwardCapture: { symbol: "\u2191", color: "#8a8070" },
+    // pike
+    extraPieceOnPromote: { symbol: "+", color: "#5080b0" },
+    // plus
+    enemySlowed: { symbol: "\u265A", color: "#6a6272" },
+    // heavy crown
+    goldBonus: { symbol: "\u25C9", color: "#c9a84e" },
+    // coin
+    healingRest: { symbol: "\u266A", color: "#8a5ab0" },
+    // bell/note
+    shieldStart: { symbol: "\u25B2", color: "#5080b0" },
+    // shield triangle
+    terrainSight: { symbol: "\u25C8", color: "#5a9e6a" }
+    // eye/lens
+  };
   var MapState = class {
     constructor() {
       this.stateMachine = null;
@@ -2733,28 +3252,74 @@
       this.runManager = null;
       this.floorData = null;
       this.hoverNode = null;
+      this.reachableNodes = /* @__PURE__ */ new Set();
       this.clickHandler = null;
       this.moveHandler = null;
       this.keyHandler = null;
+      this.goldEffect = null;
+      this.hoverPiece = null;
+      this.hoverRelic = null;
+      this.inventoryBounds = [];
+      this.selectedRosterPiece = null;
+      this.floorTransition = null;
     }
-    enter() {
+    enter(params = {}) {
       this.floorData = this.runManager.getCurrentFloorData();
       this.hoverNode = null;
+      this.hoverPiece = null;
+      this.hoverRelic = null;
+      this.selectedRosterPiece = null;
+      if (params.goldGained) {
+        this.goldEffect = { amount: params.goldGained, timer: 2, y: 0 };
+      }
       if (this.floorData) {
-        const anyVisited = this.floorData.nodes.some((n) => n.visited);
-        if (anyVisited && (this.floorData.nodes.length === 1 || this.floorData.nodes.every((n) => n.visited))) {
+        const lastLayer = this.getLastLayerNodes();
+        const lastLayerDone = lastLayer.length > 0 && lastLayer.some((n) => n.visited);
+        const singleNode = this.floorData.nodes.length === 1;
+        if (lastLayerDone || singleNode && this.floorData.nodes[0].visited) {
+          const prevFloor = this.runManager.currentFloor;
           const canContinue = this.runManager.advanceFloor();
           if (canContinue) {
             this.floorData = this.runManager.getCurrentFloorData();
+            this.startFloorTransition(prevFloor, this.runManager.currentFloor);
           }
         }
       }
+      this.updateReachable();
       this.bindInput();
     }
     exit() {
       if (this.clickHandler) this.eventBus.off("click", this.clickHandler);
       if (this.moveHandler) this.eventBus.off("mousemove", this.moveHandler);
       if (this.keyHandler) this.eventBus.off("keydown", this.keyHandler);
+    }
+    getLastLayerNodes() {
+      if (!this.floorData || !this.floorData.nodes.length) return [];
+      const maxLayer = Math.max(...this.floorData.nodes.map((n) => n.layer || 0));
+      return this.floorData.nodes.filter((n) => (n.layer || 0) === maxLayer);
+    }
+    updateReachable() {
+      this.reachableNodes.clear();
+      if (!this.floorData) return;
+      const visited = this.floorData.nodes.filter((n) => n.visited);
+      if (visited.length === 0) {
+        for (const node of this.floorData.nodes) {
+          if ((node.layer || 0) === 0) {
+            this.reachableNodes.add(node.id);
+          }
+        }
+      } else {
+        const maxVisitedLayer = Math.max(...visited.map((n) => n.layer || 0));
+        const latestVisited = visited.filter((n) => (n.layer || 0) === maxVisitedLayer);
+        for (const node of latestVisited) {
+          for (const connId of node.connections) {
+            const target = this.floorData.nodes.find((n) => n.id === connId);
+            if (target && !target.visited) {
+              this.reachableNodes.add(connId);
+            }
+          }
+        }
+      }
     }
     bindInput() {
       this.clickHandler = (data) => this.handleClick(data);
@@ -2768,11 +3333,11 @@
       if (!this.floorData) return [];
       const w = this.renderer.width;
       const h = this.renderer.height;
-      const mapH = h * 0.6;
-      const mapY = h * 0.15;
-      const mapX = w * 0.1;
-      const mapW = w * 0.8;
-      const nodeR = 28;
+      const mapH = h * 0.42;
+      const mapY = h * 0.14;
+      const mapX = w * 0.12;
+      const mapW = w * 0.76;
+      const nodeR = 24;
       return this.floorData.nodes.map((node) => ({
         node,
         x: mapX + node.x * mapW,
@@ -2781,14 +3346,50 @@
       }));
     }
     handleClick(data) {
+      if (this.floorTransition) return;
       const bounds = this.getNodeBounds();
       for (const b of bounds) {
         const dx = data.x - b.x;
         const dy = data.y - b.y;
         if (dx * dx + dy * dy < b.r * b.r) {
-          this.selectNode(b.node);
+          if (this.reachableNodes.has(b.node.id)) {
+            this.selectNode(b.node);
+          }
           return;
         }
+      }
+      for (const ib of this.inventoryBounds) {
+        if (data.x >= ib.x && data.x <= ib.x + ib.w && data.y >= ib.y && data.y <= ib.y + ib.h) {
+          if (ib.kind === "prisonerAction") {
+            this.handlePrisonerAction(ib.data.type, ib.data.action);
+            return;
+          }
+        }
+      }
+      for (const ib of this.inventoryBounds) {
+        if (data.x >= ib.x && data.x <= ib.x + ib.w && data.y >= ib.y && data.y <= ib.y + ib.h) {
+          if (ib.kind === "piece") {
+            this.handleRosterSwap(ib.data);
+            return;
+          }
+        }
+      }
+      this.selectedRosterPiece = null;
+    }
+    handleRosterSwap(piece) {
+      if (!this.selectedRosterPiece) {
+        this.selectedRosterPiece = piece;
+      } else if (this.selectedRosterPiece === piece) {
+        this.selectedRosterPiece = null;
+      } else {
+        const roster = this.runManager.roster;
+        const idxA = roster.indexOf(this.selectedRosterPiece);
+        const idxB = roster.indexOf(piece);
+        if (idxA !== -1 && idxB !== -1) {
+          roster[idxA] = piece;
+          roster[idxB] = this.selectedRosterPiece;
+        }
+        this.selectedRosterPiece = null;
       }
     }
     handleMove(data) {
@@ -2799,6 +3400,18 @@
         const dy = data.y - b.y;
         if (dx * dx + dy * dy < b.r * b.r) {
           this.hoverNode = b.node;
+          break;
+        }
+      }
+      this.hoverPiece = null;
+      this.hoverRelic = null;
+      for (const ib of this.inventoryBounds) {
+        if (data.x >= ib.x && data.x <= ib.x + ib.w && data.y >= ib.y && data.y <= ib.y + ib.h) {
+          if (ib.kind === "piece") {
+            this.hoverPiece = { piece: ib.data, x: ib.x, y: ib.y, w: ib.w, h: ib.h };
+          } else if (ib.kind === "relic") {
+            this.hoverRelic = { relic: ib.data, x: ib.x, y: ib.y, w: ib.w, h: ib.h };
+          }
           break;
         }
       }
@@ -2814,6 +3427,7 @@
       if (node.visited) return;
       node.visited = true;
       this.runManager.currentNode = node;
+      this.updateReachable();
       switch (node.type) {
         case "battle":
         case "elite": {
@@ -2852,88 +3466,761 @@
       this.checkFloorAdvance();
     }
     checkFloorAdvance() {
-      const allVisited = this.floorData.nodes.every((n) => n.visited);
-      const anyVisited = this.floorData.nodes.some((n) => n.visited);
-      if (allVisited || this.floorData.nodes.length === 1) {
+      const lastLayer = this.getLastLayerNodes();
+      const lastLayerDone = lastLayer.length > 0 && lastLayer.some((n) => n.visited);
+      const singleNode = this.floorData.nodes.length === 1;
+      if (lastLayerDone || singleNode) {
+        const prevFloor = this.runManager.currentFloor;
         const canContinue = this.runManager.advanceFloor();
         if (canContinue) {
           this.floorData = this.runManager.getCurrentFloorData();
           this.hoverNode = null;
+          this.updateReachable();
+          this.startFloorTransition(prevFloor, this.runManager.currentFloor);
         }
       }
     }
+    startFloorTransition(fromFloor, toFloor) {
+      this.floorTransition = {
+        fromFloor,
+        toFloor,
+        time: 0,
+        duration: 2
+      };
+    }
     update(dt) {
+      if (this.floorTransition) {
+        this.floorTransition.time += dt;
+        if (this.floorTransition.time >= this.floorTransition.duration) {
+          this.floorTransition = null;
+        }
+      }
+      if (this.goldEffect) {
+        this.goldEffect.timer -= dt;
+        this.goldEffect.y += dt * 30;
+        if (this.goldEffect.timer <= 0) this.goldEffect = null;
+      }
     }
     render(ctx) {
       const w = this.renderer.width;
       const h = this.renderer.height;
-      ctx.font = "bold 28px monospace";
-      ctx.fillStyle = UI_COLORS.text;
-      ctx.textAlign = "center";
-      ctx.fillText(`Floor ${this.runManager.currentFloor}`, w / 2, 40);
-      ctx.font = "13px monospace";
-      ctx.fillStyle = UI_COLORS.textDim;
-      ctx.fillText(`Army: ${this.runManager.roster.length} pieces  |  Gold: ${this.runManager.gold}  |  Relics: ${this.runManager.relicSystem.ownedRelics.length}`, w / 2, 68);
+      UITheme.drawBackground(ctx, w, h);
+      UITheme.drawVignette(ctx, w, h, 0.35);
+      UITheme.drawTitle(ctx, `Floor ${this.runManager.currentFloor}`, w / 2, 32, 24);
+      UITheme.drawDivider(ctx, w / 2 - 140, 50, 280);
       if (!this.floorData) return;
+      this.inventoryBounds = [];
+      this.renderMap(ctx, w, h);
+      this.renderInventory(ctx, w, h);
+      this.renderHoverTooltip(ctx, w, h);
+      if (this.goldEffect) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, this.goldEffect.timer);
+        ctx.font = "bold 18px monospace";
+        ctx.fillStyle = UI_COLORS.gold;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const effectText = typeof this.goldEffect.amount === "string" ? this.goldEffect.amount : `+${this.goldEffect.amount}g`;
+        ctx.fillText(effectText, w / 2, 70 - this.goldEffect.y);
+        ctx.restore();
+      }
+      if (this.floorTransition) {
+        this.drawFloorTransition(ctx, w, h);
+      }
+    }
+    drawFloorTransition(ctx, w, h) {
+      const t = this.floorTransition;
+      const p = t.time / t.duration;
+      ctx.save();
+      let barH;
+      if (p < 0.4) {
+        const bp = p / 0.4;
+        barH = easeInCubic(bp) * h * 0.5;
+      } else if (p < 0.6) {
+        barH = h * 0.5;
+      } else {
+        const bp = (p - 0.6) / 0.4;
+        barH = (1 - easeOutCubic(bp)) * h * 0.5;
+      }
+      ctx.fillStyle = "#09090d";
+      ctx.fillRect(0, 0, w, barH);
+      ctx.fillRect(0, h - barH, w, barH);
+      if (barH > 2) {
+        const lineAlpha = Math.min(1, barH / (h * 0.15));
+        ctx.strokeStyle = `rgba(200, 168, 78, ${lineAlpha * 0.5})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, barH);
+        ctx.lineTo(w, barH);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, h - barH);
+        ctx.lineTo(w, h - barH);
+        ctx.stroke();
+      }
+      if (p >= 0.25 && p < 0.75) {
+        const textP = (p - 0.25) / 0.5;
+        let textAlpha;
+        if (textP < 0.3) {
+          textAlpha = textP / 0.3;
+        } else if (textP > 0.7) {
+          textAlpha = (1 - textP) / 0.3;
+        } else {
+          textAlpha = 1;
+        }
+        ctx.globalAlpha = textAlpha;
+        if (textP < 0.5) {
+          const slideUp = textP * 40;
+          ctx.font = `bold 16px Georgia, 'Times New Roman', serif`;
+          ctx.fillStyle = UI_COLORS.textDim;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(`Floor ${t.fromFloor}`, w / 2, h / 2 - 10 - slideUp);
+        }
+        if (textP > 0.3) {
+          const arriveP = Math.min(1, (textP - 0.3) / 0.4);
+          const slideIn = (1 - easeOutCubic(arriveP)) * 50;
+          ctx.save();
+          ctx.font = `bold 36px Georgia, 'Times New Roman', serif`;
+          ctx.fillStyle = UI_COLORS.accent;
+          ctx.shadowColor = "rgba(200, 168, 78, 0.6)";
+          ctx.shadowBlur = 20;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(`Floor ${t.toFloor}`, w / 2, h / 2 + slideIn);
+          ctx.restore();
+          if (arriveP > 0.5) {
+            const divAlpha = (arriveP - 0.5) * 2;
+            const divW = 120 * divAlpha;
+            ctx.globalAlpha = textAlpha * divAlpha;
+            ctx.strokeStyle = UI_COLORS.accent;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(w / 2 - divW / 2, h / 2 + slideIn + 24);
+            ctx.lineTo(w / 2 + divW / 2, h / 2 + slideIn + 24);
+            ctx.stroke();
+            const dy = h / 2 + slideIn + 24;
+            ctx.fillStyle = UI_COLORS.accent;
+            ctx.beginPath();
+            ctx.moveTo(w / 2, dy - 3);
+            ctx.lineTo(w / 2 + 3, dy);
+            ctx.lineTo(w / 2, dy + 3);
+            ctx.lineTo(w / 2 - 3, dy);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+    }
+    renderMap(ctx, w, h) {
       const bounds = this.getNodeBounds();
-      ctx.strokeStyle = UI_COLORS.panelBorder;
-      ctx.lineWidth = 2;
       for (const b of bounds) {
         for (const connId of b.node.connections) {
           const target = bounds.find((b2) => b2.node.id === connId);
-          if (target) {
-            ctx.beginPath();
-            ctx.moveTo(b.x, b.y);
-            ctx.lineTo(target.x, target.y);
-            ctx.stroke();
+          if (!target) continue;
+          const bothVisited = b.node.visited && target.node.visited;
+          const isPath = b.node.visited && this.reachableNodes.has(target.node.id);
+          ctx.beginPath();
+          ctx.moveTo(b.x, b.y);
+          ctx.lineTo(target.x, target.y);
+          if (bothVisited) {
+            ctx.strokeStyle = "rgba(200, 168, 78, 0.3)";
+            ctx.lineWidth = 2.5;
+          } else if (isPath) {
+            ctx.strokeStyle = "rgba(200, 168, 78, 0.25)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+          } else {
+            ctx.strokeStyle = "rgba(200, 168, 78, 0.07)";
+            ctx.lineWidth = 1;
           }
+          ctx.stroke();
+          ctx.setLineDash([]);
         }
       }
       for (const b of bounds) {
         const isHover = this.hoverNode === b.node;
+        const isReachable = this.reachableNodes.has(b.node.id);
         const color = NODE_COLORS[b.node.type] || UI_COLORS.accent;
+        if (isHover && isReachable) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r + 4, 0, Math.PI * 2);
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 16;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (isReachable && !b.node.visited) {
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.5;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fillStyle = b.node.visited ? UI_COLORS.bgLight : color;
-        ctx.fill();
-        ctx.strokeStyle = isHover ? "#ffffff" : b.node.visited ? UI_COLORS.textDim : color;
-        ctx.lineWidth = isHover ? 3 : 2;
-        ctx.stroke();
         if (b.node.visited) {
-          ctx.font = "bold 16px monospace";
-          ctx.fillStyle = UI_COLORS.textDim;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText("\u2713", b.x, b.y);
+          ctx.fillStyle = UI_COLORS.bgLight;
+        } else if (isReachable) {
+          const grad = ctx.createRadialGradient(b.x - 3, b.y - 3, 0, b.x, b.y, b.r);
+          grad.addColorStop(0, color);
+          grad.addColorStop(1, this.darkenColor(color, 0.5));
+          ctx.fillStyle = grad;
+        } else {
+          ctx.fillStyle = UI_COLORS.panel;
         }
-        ctx.font = "bold 11px monospace";
-        ctx.fillStyle = b.node.visited ? UI_COLORS.textDim : UI_COLORS.text;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        if (b.node.visited) {
+          ctx.strokeStyle = UI_COLORS.panelBorder;
+        } else if (isReachable) {
+          ctx.strokeStyle = color;
+        } else {
+          ctx.strokeStyle = "rgba(42, 37, 64, 0.5)";
+        }
+        ctx.lineWidth = isHover && isReachable ? 2.5 : 1.5;
+        ctx.stroke();
+        const locked = !isReachable && !b.node.visited;
+        ctx.font = b.node.visited ? "13px monospace" : "bold 15px serif";
+        ctx.fillStyle = b.node.visited ? UI_COLORS.textDim : locked ? "rgba(106, 98, 114, 0.4)" : "#fff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          b.node.visited ? "\u2713" : locked ? "\u2022" : NODE_ICONS[b.node.type] || "",
+          b.x,
+          b.y
+        );
+        ctx.font = "10px monospace";
+        ctx.fillStyle = locked ? "rgba(106, 98, 114, 0.3)" : b.node.visited ? UI_COLORS.textDim : UI_COLORS.text;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.fillText(NODE_LABELS[b.node.type] || b.node.type, b.x, b.y + b.r + 6);
+        ctx.fillText(NODE_LABELS[b.node.type] || b.node.type, b.x, b.y + b.r + 5);
       }
-      if (this.hoverNode && !this.hoverNode.visited) {
-        this.drawTooltip(ctx, this.hoverNode);
+      if (this.hoverNode && this.reachableNodes.has(this.hoverNode.id)) {
+        this.drawNodeTooltip(ctx, this.hoverNode);
       }
-      ctx.font = "12px monospace";
-      ctx.fillStyle = UI_COLORS.textDim;
-      ctx.textAlign = "center";
-      ctx.fillText("Click a node to proceed", w / 2, h - 30);
     }
-    drawTooltip(ctx, node) {
+    renderInventory(ctx, w, h) {
+      const panelY = h * 0.62;
+      const panelH = h - panelY - 10;
+      const panelW = w - 20;
+      const panelX = 10;
+      UITheme.drawPanel(ctx, panelX, panelY, panelW, panelH, {
+        radius: 8,
+        shadow: false
+      });
+      const rm = this.runManager;
+      const relics = rm.relicSystem.ownedRelics;
+      ctx.font = "bold 13px monospace";
+      ctx.fillStyle = UI_COLORS.gold;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${rm.gold}g`, panelX + 14, panelY + 16);
+      ctx.font = "11px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "right";
+      ctx.fillText(
+        `W:${rm.stats.battlesWon}  L:${rm.stats.piecesLost}`,
+        panelX + panelW - 14,
+        panelY + 16
+      );
+      ctx.beginPath();
+      ctx.moveTo(panelX + 10, panelY + 30);
+      ctx.lineTo(panelX + panelW - 10, panelY + 30);
+      ctx.strokeStyle = UI_COLORS.panelBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      const contentY = panelY + 36;
+      const relicColW = relics.length > 0 ? Math.min(180, panelW * 0.38) : 0;
+      const rosterColW = panelW - relicColW - 28;
+      const rosterEndY = this.renderRoster(ctx, panelX + 14, contentY, rosterColW, rm.roster);
+      this.renderPrisoners(ctx, panelX + 14, rosterEndY + 6, rosterColW, rm.prisoners);
+      if (relics.length > 0) {
+        const relicX = panelX + panelW - relicColW - 10;
+        ctx.beginPath();
+        ctx.moveTo(relicX - 6, contentY);
+        ctx.lineTo(relicX - 6, panelY + panelH - 10);
+        ctx.strokeStyle = UI_COLORS.panelBorder;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        this.renderRelics(ctx, relicX, contentY, relicColW, relics);
+      }
+    }
+    renderRoster(ctx, x, y, maxW, roster) {
+      const pieceSize = 28;
+      const gap = 4;
+      const maxPerRow = Math.floor(maxW / (pieceSize + gap));
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("ROSTER", x, y);
+      const gridY = y + 14;
+      for (let i = 0; i < roster.length; i++) {
+        const piece = roster[i];
+        const col = i % maxPerRow;
+        const row = Math.floor(i / maxPerRow);
+        const px = x + col * (pieceSize + gap);
+        const py = gridY + row * (pieceSize + gap);
+        if (this.selectedRosterPiece === piece) {
+          ctx.save();
+          ctx.fillStyle = "rgba(200, 168, 78, 0.15)";
+          ctx.fillRect(px - 2, py - 2, pieceSize + 4, pieceSize + 4);
+          ctx.beginPath();
+          ctx.rect(px - 2, py - 2, pieceSize + 4, pieceSize + 4);
+          ctx.strokeStyle = UI_COLORS.gold;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        } else if (this.selectedRosterPiece && this.hoverPiece && this.hoverPiece.piece === piece) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(px - 2, py - 2, pieceSize + 4, pieceSize + 4);
+          ctx.strokeStyle = UI_COLORS.gold;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 3]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        } else if (this.hoverPiece && this.hoverPiece.piece === piece) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(px - 2, py - 2, pieceSize + 4, pieceSize + 4);
+          ctx.strokeStyle = UI_COLORS.accent;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        }
+        PieceRenderer.draw(ctx, piece, px, py, pieceSize);
+        this.inventoryBounds.push({
+          kind: "piece",
+          x: px,
+          y: py,
+          w: pieceSize,
+          h: pieceSize,
+          data: piece
+        });
+      }
+      const rows = Math.ceil(roster.length / maxPerRow);
+      let endY = gridY + rows * (pieceSize + gap);
+      if (this.selectedRosterPiece) {
+        ctx.font = "9px monospace";
+        ctx.fillStyle = UI_COLORS.gold;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText("Click another to swap", x, endY + 2);
+        endY += 14;
+      }
+      return endY;
+    }
+    renderRelics(ctx, x, y, maxW, relics) {
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("RELICS", x, y);
+      const itemH = 22;
+      const iconSize = 16;
+      const startY = y + 14;
+      for (let i = 0; i < relics.length; i++) {
+        const relic = relics[i];
+        const iy = startY + i * itemH;
+        const iconCfg = RELIC_ICONS[relic.id] || { symbol: "\u2022", color: UI_COLORS.accent };
+        if (this.hoverRelic && this.hoverRelic.relic === relic) {
+          ctx.fillStyle = "rgba(200, 168, 78, 0.06)";
+          ctx.fillRect(x - 2, iy - 2, maxW + 4, itemH);
+        }
+        const iconCx = x + iconSize / 2;
+        const iconCy = iy + iconSize / 2;
+        this.drawRelicIcon(ctx, iconCx, iconCy, iconSize / 2, relic.id, iconCfg);
+        ctx.font = "10px monospace";
+        ctx.fillStyle = UI_COLORS.text;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        const nameStr = relic.name.length > 16 ? relic.name.slice(0, 15) + "\u2026" : relic.name;
+        ctx.fillText(nameStr, x + iconSize + 6, iconCy);
+        this.inventoryBounds.push({
+          kind: "relic",
+          x: x - 2,
+          y: iy - 2,
+          w: maxW + 4,
+          h: itemH,
+          data: relic
+        });
+      }
+    }
+    renderPrisoners(ctx, x, y, maxW, prisoners) {
+      const types = [PIECE_TYPES.PAWN, PIECE_TYPES.KNIGHT, PIECE_TYPES.BISHOP, PIECE_TYPES.ROOK, PIECE_TYPES.QUEEN];
+      const active = types.filter((t) => (prisoners[t] || 0) > 0);
+      if (active.length === 0) return;
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("PRISONERS", x, y);
+      const rowH = 22;
+      const iconSize = 16;
+      let rowY = y + 14;
+      for (const type of active) {
+        const count = prisoners[type];
+        const tempPiece = new Piece(type, TEAMS.ENEMY);
+        PieceRenderer.draw(ctx, tempPiece, x, rowY, iconSize);
+        ctx.font = "11px monospace";
+        ctx.fillStyle = UI_COLORS.text;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`x${count}`, x + iconSize + 4, rowY + iconSize / 2);
+        const btnY = rowY + 1;
+        const btnH = 16;
+        const ransom = { pawn: 2, knight: 4, bishop: 4, rook: 6, queen: 10 };
+        const releaseText = `${ransom[type] || 2}g`;
+        const releaseBtnW = 32;
+        const releaseBtnX = x + maxW - releaseBtnW;
+        ctx.font = "9px monospace";
+        ctx.fillStyle = UI_COLORS.gold;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.save();
+        ctx.beginPath();
+        UITheme.roundRect(ctx, releaseBtnX, btnY, releaseBtnW, btnH, 3);
+        ctx.fillStyle = "rgba(200, 168, 78, 0.1)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(200, 168, 78, 0.3)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+        ctx.font = "9px monospace";
+        ctx.fillStyle = UI_COLORS.gold;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(releaseText, releaseBtnX + releaseBtnW / 2, btnY + btnH / 2);
+        this.inventoryBounds.push({
+          kind: "prisonerAction",
+          x: releaseBtnX,
+          y: btnY,
+          w: releaseBtnW,
+          h: btnH,
+          data: { type, action: "release" }
+        });
+        if (count >= 3) {
+          const convertBtnW = 42;
+          const convertBtnX = releaseBtnX - convertBtnW - 4;
+          ctx.save();
+          ctx.beginPath();
+          UITheme.roundRect(ctx, convertBtnX, btnY, convertBtnW, btnH, 3);
+          ctx.fillStyle = "rgba(90, 158, 106, 0.15)";
+          ctx.fill();
+          ctx.strokeStyle = UI_COLORS.success;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+          ctx.font = "9px monospace";
+          ctx.fillStyle = UI_COLORS.success;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("Convert", convertBtnX + convertBtnW / 2, btnY + btnH / 2);
+          this.inventoryBounds.push({
+            kind: "prisonerAction",
+            x: convertBtnX,
+            y: btnY,
+            w: convertBtnW,
+            h: btnH,
+            data: { type, action: "convert" }
+          });
+        }
+        rowY += rowH;
+      }
+    }
+    handlePrisonerAction(type, action) {
+      if (action === "convert") {
+        if (this.runManager.convertPrisoners(type)) {
+          this.goldEffect = { amount: `+${PIECE_NAMES2[type]}!`, timer: 2, y: 0 };
+        }
+      } else if (action === "release") {
+        const gold = this.runManager.releasePrisoner(type);
+        if (gold > 0) {
+          this.goldEffect = { amount: `+${gold}g`, timer: 2, y: 0 };
+        }
+      }
+    }
+    drawRelicIcon(ctx, cx, cy, r, relicId, cfg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fill();
+      ctx.strokeStyle = cfg.color;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      const s = r * 0.65;
+      ctx.fillStyle = cfg.color;
+      ctx.strokeStyle = cfg.color;
+      ctx.lineWidth = 1;
+      switch (relicId) {
+        case "freeMove":
+          ctx.beginPath();
+          ctx.moveTo(cx - s, cy + s * 0.4);
+          ctx.lineTo(cx - s * 0.6, cy - s * 0.5);
+          ctx.lineTo(cx, cy + s * 0.1);
+          ctx.lineTo(cx + s * 0.6, cy - s * 0.5);
+          ctx.lineTo(cx + s, cy + s * 0.4);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        case "captureStreak":
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - s);
+          ctx.quadraticCurveTo(cx + s * 1.2, cy + s * 0.2, cx, cy + s);
+          ctx.quadraticCurveTo(cx - s * 1.2, cy + s * 0.2, cx, cy - s);
+          ctx.fill();
+          break;
+        case "earlyPromotion":
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - s);
+          ctx.lineTo(cx + s * 0.7, cy);
+          ctx.lineTo(cx + s * 0.25, cy);
+          ctx.lineTo(cx + s * 0.25, cy + s);
+          ctx.lineTo(cx - s * 0.25, cy + s);
+          ctx.lineTo(cx - s * 0.25, cy);
+          ctx.lineTo(cx - s * 0.7, cy);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        case "pawnForwardCapture":
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - s);
+          ctx.lineTo(cx + s * 0.4, cy - s * 0.2);
+          ctx.lineTo(cx + s * 0.12, cy - s * 0.2);
+          ctx.lineTo(cx + s * 0.12, cy + s);
+          ctx.lineTo(cx - s * 0.12, cy + s);
+          ctx.lineTo(cx - s * 0.12, cy - s * 0.2);
+          ctx.lineTo(cx - s * 0.4, cy - s * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        case "extraPieceOnPromote":
+          ctx.beginPath();
+          ctx.arc(cx - s * 0.5, cy - s * 0.6, s * 0.3, Math.PI, 0);
+          ctx.lineTo(cx - s * 0.2, cy + s * 0.6);
+          ctx.arc(cx + s * 0.5, cy + s * 0.6, s * 0.3, Math.PI, 0, true);
+          ctx.lineTo(cx + s * 0.8, cy - s * 0.6);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx - s * 0.3, cy - s * 0.1);
+          ctx.lineTo(cx + s * 0.5, cy - s * 0.1);
+          ctx.moveTo(cx - s * 0.3, cy + s * 0.2);
+          ctx.lineTo(cx + s * 0.5, cy + s * 0.2);
+          ctx.stroke();
+          break;
+        case "enemySlowed":
+          ctx.beginPath();
+          ctx.moveTo(cx - s, cy - s * 0.2);
+          ctx.lineTo(cx - s * 0.5, cy + s * 0.5);
+          ctx.lineTo(cx, cy - s * 0.1);
+          ctx.lineTo(cx + s * 0.5, cy + s * 0.5);
+          ctx.lineTo(cx + s, cy - s * 0.2);
+          ctx.lineTo(cx + s, cy + s * 0.6);
+          ctx.lineTo(cx - s, cy + s * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        case "goldBonus":
+          ctx.beginPath();
+          ctx.arc(cx, cy, s * 0.85, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(cx, cy, s * 0.5, 0, Math.PI * 2);
+          ctx.strokeStyle = "#09090d";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.font = `bold ${s * 1.1}px serif`;
+          ctx.fillStyle = "#09090d";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("G", cx, cy + 0.5);
+          break;
+        case "healingRest":
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - s);
+          ctx.quadraticCurveTo(cx + s * 1.3, cy - s * 0.2, cx + s * 0.8, cy + s * 0.5);
+          ctx.lineTo(cx - s * 0.8, cy + s * 0.5);
+          ctx.quadraticCurveTo(cx - s * 1.3, cy - s * 0.2, cx, cy - s);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(cx, cy + s * 0.7, s * 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        case "shieldStart":
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - s);
+          ctx.lineTo(cx + s * 0.9, cy - s * 0.5);
+          ctx.lineTo(cx + s * 0.9, cy + s * 0.1);
+          ctx.quadraticCurveTo(cx + s * 0.7, cy + s * 0.8, cx, cy + s);
+          ctx.quadraticCurveTo(cx - s * 0.7, cy + s * 0.8, cx - s * 0.9, cy + s * 0.1);
+          ctx.lineTo(cx - s * 0.9, cy - s * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        case "terrainSight":
+          ctx.beginPath();
+          ctx.moveTo(cx - s, cy);
+          ctx.quadraticCurveTo(cx, cy - s * 1.1, cx + s, cy);
+          ctx.quadraticCurveTo(cx, cy + s * 1.1, cx - s, cy);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(cx, cy, s * 0.35, 0, Math.PI * 2);
+          ctx.fillStyle = "#09090d";
+          ctx.fill();
+          break;
+        default:
+          ctx.font = `${r}px serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(cfg.symbol, cx, cy);
+          break;
+      }
+      ctx.restore();
+    }
+    renderHoverTooltip(ctx, w, h) {
+      if (this.hoverPiece) {
+        this.drawPieceTooltip(ctx, this.hoverPiece, w, h);
+      } else if (this.hoverRelic) {
+        this.drawRelicTooltip(ctx, this.hoverRelic, w, h);
+      }
+    }
+    drawPieceTooltip(ctx, hp, screenW, screenH) {
+      const piece = hp.piece;
+      const name = PIECE_NAMES2[piece.type] || piece.type;
+      const mods = piece.modifiers || [];
+      ctx.font = "bold 12px monospace";
+      const titleW = ctx.measureText(name).width;
+      const lines = [];
+      ctx.font = "10px monospace";
+      for (const mod of mods) {
+        const modName = mod.name || mod.id;
+        const modDesc = mod.description || "";
+        lines.push({ name: modName, desc: modDesc });
+      }
+      if (mods.length === 0) {
+        lines.push({ name: "", desc: "No modifiers" });
+      }
+      let maxLineW = titleW;
+      for (const line of lines) {
+        const lineText = line.name ? `${line.name}: ${line.desc}` : line.desc;
+        const lw = ctx.measureText(lineText).width;
+        if (lw > maxLineW) maxLineW = lw;
+      }
+      const tipW = Math.min(260, maxLineW + 28);
+      const tipH = 26 + lines.length * 16;
+      let tipX = hp.x + hp.w / 2 - tipW / 2;
+      let tipY = hp.y - tipH - 8;
+      if (tipX < 4) tipX = 4;
+      if (tipX + tipW > screenW - 4) tipX = screenW - tipW - 4;
+      if (tipY < 4) tipY = hp.y + hp.h + 8;
+      UITheme.drawPanel(ctx, tipX, tipY, tipW, tipH, { radius: 6 });
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = UI_COLORS.accent;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(name, tipX + 10, tipY + 7);
+      ctx.font = "10px monospace";
+      for (let i = 0; i < lines.length; i++) {
+        const ly = tipY + 24 + i * 16;
+        if (lines[i].name) {
+          ctx.fillStyle = UI_COLORS.text;
+          ctx.fillText(lines[i].name, tipX + 10, ly);
+          ctx.fillStyle = UI_COLORS.textDim;
+          const nameW = ctx.measureText(lines[i].name + ": ").width;
+          let desc = lines[i].desc;
+          while (ctx.measureText(desc).width > tipW - nameW - 20 && desc.length > 3) {
+            desc = desc.slice(0, -4) + "\u2026";
+          }
+          ctx.fillText(desc, tipX + 10 + nameW, ly);
+        } else {
+          ctx.fillStyle = UI_COLORS.textDim;
+          ctx.fillText(lines[i].desc, tipX + 10, ly);
+        }
+      }
+    }
+    drawRelicTooltip(ctx, hr, screenW, screenH) {
+      const relic = hr.relic;
+      const name = relic.name;
+      const desc = relic.description || "";
+      ctx.font = "bold 12px monospace";
+      const titleW = ctx.measureText(name).width;
+      ctx.font = "10px monospace";
+      const maxDescW = Math.min(240, screenW - 40);
+      const descLines = this.wrapToLines(ctx, desc, maxDescW);
+      const tipW = Math.max(titleW + 28, maxDescW + 28);
+      const tipH = 26 + descLines.length * 14;
+      let tipX = hr.x + hr.w / 2 - tipW / 2;
+      let tipY = hr.y - tipH - 8;
+      if (tipX < 4) tipX = 4;
+      if (tipX + tipW > screenW - 4) tipX = screenW - tipW - 4;
+      if (tipY < 4) tipY = hr.y + hr.h + 8;
+      UITheme.drawPanel(ctx, tipX, tipY, tipW, tipH, { radius: 6 });
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = UI_COLORS.accent;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(name, tipX + 10, tipY + 7);
+      ctx.font = "10px monospace";
+      ctx.fillStyle = UI_COLORS.text;
+      for (let i = 0; i < descLines.length; i++) {
+        ctx.fillText(descLines[i], tipX + 10, tipY + 24 + i * 14);
+      }
+    }
+    drawNodeTooltip(ctx, node) {
       const w = this.renderer.width;
-      ctx.font = "14px monospace";
+      const h = this.renderer.height;
+      const tipY = h * 0.57;
+      UITheme.drawPanel(ctx, w / 2 - 120, tipY, 240, 30, {
+        radius: 6,
+        shadow: false
+      });
+      ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.text;
       ctx.textAlign = "center";
-      ctx.fillText(`${NODE_LABELS[node.type]} \u2014 Click to enter`, w / 2, this.renderer.height - 60);
-      if (this.runManager.relicSystem.hasRelic("terrainSight") && node.terrain && node.terrain.length > 0) {
-        ctx.font = "11px monospace";
-        ctx.fillStyle = "#aaa";
-        const terrainNames = node.terrain.map((t) => t.terrain || t.type || t).join(", ");
-        ctx.fillText(`Terrain: ${terrainNames}`, w / 2, this.renderer.height - 44);
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${NODE_LABELS[node.type]} \u2014 Click to enter`, w / 2, tipY + 15);
+    }
+    wrapToLines(ctx, text, maxWidth) {
+      const words = text.split(" ");
+      const lines = [];
+      let line = "";
+      for (const word of words) {
+        const test = line + (line ? " " : "") + word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
       }
+      if (line) lines.push(line);
+      return lines;
+    }
+    darkenColor(hex, amount) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgb(${Math.floor(r * amount)},${Math.floor(g * amount)},${Math.floor(b * amount)})`;
     }
   };
+  function easeInCubic(t) {
+    return t * t * t;
+  }
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
 
   // src/board/Tile.js
   var Tile = class {
@@ -3374,7 +4661,81 @@
           moves.push({ col: nc, row: nr, type: "threat" });
         }
       }
+      if (!capturesOnly && !piece.hasMoved) {
+        const castles = this.getCastlingMoves(piece, board);
+        for (const c of castles) moves.push(c);
+      }
       return moves;
+    }
+    static getCastlingMoves(king, board) {
+      const moves = [];
+      const row = king.row;
+      const enemyTeam = king.team === TEAMS.PLAYER ? TEAMS.ENEMY : TEAMS.PLAYER;
+      if (this.isSquareAttackedBy(king.col, row, enemyTeam, board)) return moves;
+      const kRook = board.getPieceAt(board.cols - 1, row);
+      if (kRook && kRook.type === PIECE_TYPES.ROOK && kRook.team === king.team && !kRook.hasMoved) {
+        let clear = true;
+        for (let c = king.col + 1; c < board.cols - 1; c++) {
+          const t = board.getTile(c, row);
+          if (t.hasPiece() || !t.isPassable()) {
+            clear = false;
+            break;
+          }
+        }
+        if (clear) {
+          const pass1 = !this.isSquareAttackedBy(king.col + 1, row, enemyTeam, board);
+          const pass2 = !this.isSquareAttackedBy(king.col + 2, row, enemyTeam, board);
+          if (pass1 && pass2) {
+            moves.push({
+              col: king.col + 2,
+              row,
+              type: "castle",
+              rookFromCol: board.cols - 1,
+              rookToCol: king.col + 1
+            });
+          }
+        }
+      }
+      const qRook = board.getPieceAt(0, row);
+      if (qRook && qRook.type === PIECE_TYPES.ROOK && qRook.team === king.team && !qRook.hasMoved) {
+        let clear = true;
+        for (let c = 1; c < king.col; c++) {
+          const t = board.getTile(c, row);
+          if (t.hasPiece() || !t.isPassable()) {
+            clear = false;
+            break;
+          }
+        }
+        if (clear) {
+          const pass1 = !this.isSquareAttackedBy(king.col - 1, row, enemyTeam, board);
+          const pass2 = !this.isSquareAttackedBy(king.col - 2, row, enemyTeam, board);
+          if (pass1 && pass2) {
+            moves.push({
+              col: king.col - 2,
+              row,
+              type: "castle",
+              rookFromCol: 0,
+              rookToCol: king.col - 1
+            });
+          }
+        }
+      }
+      return moves;
+    }
+    static isSquareAttackedBy(col, row, team, board) {
+      const pieces = board.getTeamPieces(team);
+      for (const p of pieces) {
+        let attackMoves;
+        if (p.type === PIECE_TYPES.KING) {
+          const dc = Math.abs(p.col - col);
+          const dr = Math.abs(p.row - row);
+          if (dc <= 1 && dr <= 1 && dc + dr > 0) return true;
+          continue;
+        }
+        attackMoves = this.getMoves(p, board, true);
+        if (attackMoves.some((m) => m.col === col && m.row === row)) return true;
+      }
+      return false;
     }
   };
 
@@ -3469,15 +4830,7 @@
       return target;
     }
     getGoldValue(piece) {
-      const values = {
-        [PIECE_TYPES.PAWN]: 2,
-        [PIECE_TYPES.KNIGHT]: 5,
-        [PIECE_TYPES.BISHOP]: 5,
-        [PIECE_TYPES.ROOK]: 8,
-        [PIECE_TYPES.QUEEN]: 12,
-        [PIECE_TYPES.KING]: 25
-      };
-      return values[piece.type] || 1;
+      return 1;
     }
   };
 
@@ -3553,32 +4906,55 @@
       if (move.type === "capture") {
         const target = board.getPieceAt(move.col, move.row);
         if (target) {
-          score += PIECE_VALUES[target.type] * 100;
+          const targetVal = PIECE_VALUES[target.type] * 100;
+          score += targetVal;
           if (target.type === PIECE_TYPES.KING) {
-            score += 1e4;
+            score += 5e4;
+          }
+          if (!this.isSquareDefendedBy(move.col, move.row, board, enemyTeam)) {
+            score += targetVal * 0.5;
           }
         }
       }
-      const risk = this.evaluateSquareRisk(move.col, move.row, piece, board, enemyTeam);
+      const risk = this.evaluateSquareRisk(move.col, move.row, piece, board, ownTeam, enemyTeam);
       score -= risk;
-      const currentRisk = this.evaluateSquareRisk(piece.col, piece.row, piece, board, enemyTeam);
-      if (currentRisk > 0 && risk === 0 && move.type !== "capture") {
-        score += currentRisk * 0.5;
+      const currentRisk = this.evaluateSquareRisk(piece.col, piece.row, piece, board, ownTeam, enemyTeam);
+      if (currentRisk > 0 && risk === 0) {
+        score += currentRisk * 0.7;
+      }
+      const friendlyPieces = board.getTeamPieces(ownTeam);
+      for (const friend of friendlyPieces) {
+        if (friend === piece) continue;
+        const friendKey = `${friend.col},${friend.row}`;
+        const friendMoves = MovementPattern.getMoves(piece, board, true);
+        const defendsFriend = friendMoves.some((m) => m.col === friend.col && m.row === friend.row);
+        if (defendsFriend) {
+          const friendRisk = this.evaluateSquareRisk(friend.col, friend.row, friend, board, ownTeam, enemyTeam);
+          if (friendRisk > 0) {
+            score += PIECE_VALUES[friend.type] * 20;
+          }
+        }
       }
       const centerCol = board.cols / 2;
       const centerRow = board.rows / 2;
       const centerDist = Math.abs(move.col - centerCol) + Math.abs(move.row - centerRow);
-      score += (board.cols - centerDist) * 2;
+      score += (board.cols - centerDist) * 3;
       const enemyKing = board.findKing(enemyTeam);
       if (enemyKing) {
         const distToKing = Math.abs(move.col - enemyKing.col) + Math.abs(move.row - enemyKing.row);
-        score += (20 - distToKing) * 3;
+        score += (20 - distToKing) * 5;
+        if (distToKing <= 2 && piece.type !== PIECE_TYPES.PAWN) {
+          score += 25;
+        }
       }
       if (piece.type === PIECE_TYPES.PAWN) {
         const direction = piece.team === "player" ? -1 : 1;
-        score += move.row * direction * 5;
+        score += move.row * direction * 8;
+        if (direction === 1 && move.row === board.rows - 1 || direction === -1 && move.row === 0) {
+          score += 400;
+        }
       }
-      score += this.evaluateKingSafety(board, ownTeam) * 0.1;
+      score += this.evaluateKingSafety(board, ownTeam) * 0.5;
       const ownKing = board.findKing(ownTeam);
       if (ownKing && piece.type !== PIECE_TYPES.KING) {
         const distToOwnKing = Math.abs(move.col - ownKing.col) + Math.abs(move.row - ownKing.row);
@@ -3587,22 +4963,60 @@
           (e) => Math.abs(e.col - ownKing.col) + Math.abs(e.row - ownKing.row) <= 3
         );
         if (nearbyEnemies.length > 0 && distToOwnKing <= 2) {
-          score += nearbyEnemies.length * 15;
+          score += nearbyEnemies.length * 20;
         }
+      }
+      if (piece.type === PIECE_TYPES.KING) {
+        const destRisk = this.evaluateSquareRisk(move.col, move.row, piece, board, ownTeam, enemyTeam);
+        score -= destRisk * 2;
       }
       return score;
     },
-    evaluateSquareRisk(col, row, movingPiece, board, enemyTeam) {
+    evaluateSquareRisk(col, row, movingPiece, board, ownTeam, enemyTeam) {
+      if (enemyTeam === void 0) {
+        enemyTeam = ownTeam;
+        ownTeam = movingPiece.team;
+      }
       const enemies = board.getTeamPieces(enemyTeam);
-      let risk = 0;
+      let isAttacked = false;
+      let lowestAttackerValue = Infinity;
       for (const enemy of enemies) {
         const moves = MovementPattern.getMoves(enemy, board, true);
         if (moves.some((m) => m.col === col && m.row === row)) {
-          risk += PIECE_VALUES[movingPiece.type] * 50;
+          isAttacked = true;
+          const val = PIECE_VALUES[enemy.type];
+          if (val < lowestAttackerValue) lowestAttackerValue = val;
+        }
+      }
+      if (!isAttacked) return 0;
+      const pieceValue = PIECE_VALUES[movingPiece.type];
+      const friendlies = board.getTeamPieces(ownTeam);
+      let isDefended = false;
+      for (const friend of friendlies) {
+        if (friend === movingPiece) continue;
+        const moves = MovementPattern.getMoves(friend, board, true);
+        if (moves.some((m) => m.col === col && m.row === row)) {
+          isDefended = true;
           break;
         }
       }
-      return risk;
+      if (!isDefended) {
+        return pieceValue * 80;
+      }
+      if (lowestAttackerValue < pieceValue) {
+        return (pieceValue - lowestAttackerValue) * 40;
+      }
+      return 0;
+    },
+    isSquareDefendedBy(col, row, board, team) {
+      const pieces = board.getTeamPieces(team);
+      for (const piece of pieces) {
+        const moves = MovementPattern.getMoves(piece, board, true);
+        if (moves.some((m) => m.col === col && m.row === row)) {
+          return true;
+        }
+      }
+      return false;
     },
     evaluateKingSafety(board, team) {
       const king = board.findKing(team);
@@ -3616,6 +5030,160 @@
         else if (dist <= 4) dangerScore += PIECE_VALUES[enemy.type] * 5;
       }
       return -dangerScore;
+    }
+  };
+
+  // src/ai/Evaluator.js
+  var Evaluator = class {
+    static evaluateBoard(board, team) {
+      const enemyTeam = team === "player" ? "enemy" : "player";
+      let score = 0;
+      for (const piece of board.getTeamPieces(team)) {
+        score += PIECE_VALUES[piece.type] * 100;
+      }
+      for (const piece of board.getTeamPieces(enemyTeam)) {
+        score -= PIECE_VALUES[piece.type] * 100;
+      }
+      let ownMoves = 0;
+      let enemyMoves = 0;
+      for (const p of board.getTeamPieces(team)) {
+        ownMoves += MovementPattern.getMoves(p, board, false).filter((m) => m.type !== "threat").length;
+      }
+      for (const p of board.getTeamPieces(enemyTeam)) {
+        enemyMoves += MovementPattern.getMoves(p, board, false).filter((m) => m.type !== "threat").length;
+      }
+      score += (ownMoves - enemyMoves) * 5;
+      score += this.evaluateKingSafety(board, team);
+      score -= this.evaluateKingSafety(board, enemyTeam);
+      const midC = board.cols / 2;
+      const midR = board.rows / 2;
+      for (const p of board.getTeamPieces(team)) {
+        const dist = Math.abs(p.col - midC) + Math.abs(p.row - midR);
+        if (dist <= 2) score += 12;
+        else if (dist <= 3) score += 5;
+      }
+      for (const p of board.getTeamPieces(enemyTeam)) {
+        const dist = Math.abs(p.col - midC) + Math.abs(p.row - midR);
+        if (dist <= 2) score -= 12;
+        else if (dist <= 3) score -= 5;
+      }
+      score += this.evaluateHangingPieces(board, team, enemyTeam);
+      for (const p of board.getTeamPieces(team)) {
+        if (p.type === PIECE_TYPES.PAWN) {
+          const dir = p.team === "player" ? -1 : 1;
+          const progress = p.row * dir;
+          score += progress * 3;
+        }
+      }
+      return score;
+    }
+    static evaluateHangingPieces(board, team, enemyTeam) {
+      let score = 0;
+      for (const piece of board.getTeamPieces(team)) {
+        if (piece.type === PIECE_TYPES.KING) continue;
+        if (this.isAttacked(piece, board, enemyTeam) && !this.isDefended(piece, board, team)) {
+          score -= PIECE_VALUES[piece.type] * 40;
+        }
+      }
+      for (const piece of board.getTeamPieces(enemyTeam)) {
+        if (piece.type === PIECE_TYPES.KING) continue;
+        if (this.isAttacked(piece, board, team) && !this.isDefended(piece, board, enemyTeam)) {
+          score += PIECE_VALUES[piece.type] * 40;
+        }
+      }
+      return score;
+    }
+    static isAttacked(piece, board, byTeam) {
+      for (const attacker of board.getTeamPieces(byTeam)) {
+        const moves = MovementPattern.getMoves(attacker, board, true);
+        if (moves.some((m) => m.col === piece.col && m.row === piece.row)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    static isDefended(piece, board, byTeam) {
+      for (const defender of board.getTeamPieces(byTeam)) {
+        if (defender === piece) continue;
+        const moves = MovementPattern.getMoves(defender, board, true);
+        if (moves.some((m) => m.col === piece.col && m.row === piece.row)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    static evaluateKingSafety(board, team) {
+      const king = board.findKing(team);
+      if (!king) return -5e3;
+      const enemyTeam = team === "player" ? "enemy" : "player";
+      let safety = 0;
+      for (const enemy of board.getTeamPieces(enemyTeam)) {
+        const dist = Math.abs(enemy.col - king.col) + Math.abs(enemy.row - king.row);
+        if (dist <= 2) safety -= PIECE_VALUES[enemy.type] * 15;
+        else if (dist <= 4) safety -= PIECE_VALUES[enemy.type] * 3;
+      }
+      for (const friend of board.getTeamPieces(team)) {
+        if (friend === king) continue;
+        const dist = Math.abs(friend.col - king.col) + Math.abs(friend.row - king.row);
+        if (dist <= 2) safety += 8;
+      }
+      return safety;
+    }
+    static minimax(board, depth, isMaximizing, team, alpha = -Infinity, beta = Infinity) {
+      if (depth === 0) {
+        return { score: this.evaluateBoard(board, team) };
+      }
+      const currentTeam = isMaximizing ? team : team === "player" ? "enemy" : "player";
+      const pieces = board.getTeamPieces(currentTeam);
+      let allMoves = [];
+      for (const piece of pieces) {
+        if (piece.isFrozen) continue;
+        const moves = MovementPattern.getMoves(piece, board, false).filter((m) => m.type !== "threat");
+        for (const move of moves) {
+          allMoves.push({ piece, move });
+        }
+      }
+      allMoves.sort((a, b) => {
+        const aCapture = a.move.type === "capture" ? 1 : 0;
+        const bCapture = b.move.type === "capture" ? 1 : 0;
+        if (aCapture !== bCapture) return bCapture - aCapture;
+        if (aCapture && bCapture) {
+          const aTarget = board.getPieceAt(a.move.col, a.move.row);
+          const bTarget = board.getPieceAt(b.move.col, b.move.row);
+          const aVal = aTarget ? PIECE_VALUES[aTarget.type] : 0;
+          const bVal = bTarget ? PIECE_VALUES[bTarget.type] : 0;
+          return bVal - aVal;
+        }
+        return 0;
+      });
+      let bestMove = null;
+      let bestScore = isMaximizing ? -Infinity : Infinity;
+      for (const { piece, move } of allMoves) {
+        const boardCopy = board.clone();
+        const pieceCopy = boardCopy.getPieceAt(piece.col, piece.row);
+        if (!pieceCopy) continue;
+        boardCopy.movePiece(pieceCopy, move.col, move.row);
+        if (move.type === "castle" && move.rookFromCol !== void 0) {
+          const rook = boardCopy.getPieceAt(move.rookFromCol, move.row);
+          if (rook) boardCopy.movePiece(rook, move.rookToCol, move.row);
+        }
+        const result = this.minimax(boardCopy, depth - 1, !isMaximizing, team, alpha, beta);
+        if (isMaximizing) {
+          if (result.score > bestScore) {
+            bestScore = result.score;
+            bestMove = { piece, move, score: bestScore };
+          }
+          alpha = Math.max(alpha, bestScore);
+        } else {
+          if (result.score < bestScore) {
+            bestScore = result.score;
+            bestMove = { piece, move, score: bestScore };
+          }
+          beta = Math.min(beta, bestScore);
+        }
+        if (beta <= alpha) break;
+      }
+      return bestMove || { score: bestScore };
     }
   };
 
@@ -3683,9 +5251,20 @@
       const pieces = this.board.getTeamPieces(team);
       const enemyTeam = team === TEAMS.PLAYER ? TEAMS.ENEMY : TEAMS.PLAYER;
       this.threatMap.build(enemyTeam);
-      let allMoves = [];
       const enemySlowed = this.relics.some((r) => r.id === "enemySlowed");
       const turnNum = this.turnManager ? this.turnManager.turnNumber : 0;
+      if (this.difficulty >= 3) {
+        const depth = this.difficulty >= 5 ? 3 : 2;
+        const result = Evaluator.minimax(this.board, depth, true, team);
+        if (result && result.piece && result.move) {
+          if (!result.piece.isFrozen) {
+            if (!(enemySlowed && result.piece.type === PIECE_TYPES.KING && turnNum % 2 === 0)) {
+              return result;
+            }
+          }
+        }
+      }
+      let allMoves = [];
       for (const piece of pieces) {
         if (piece.isFrozen) continue;
         if (enemySlowed && piece.type === PIECE_TYPES.KING && turnNum % 2 === 0) continue;
@@ -3704,9 +5283,8 @@
       }
       if (allMoves.length === 0) return null;
       allMoves.sort((a, b) => b.score - a.score);
-      if (this.difficulty < 5) {
-        const topN = Math.max(1, Math.ceil(allMoves.length * (1 - this.difficulty * 0.22)));
-        const candidates = allMoves.slice(0, topN);
+      if (this.difficulty <= 1) {
+        const candidates = allMoves.slice(0, Math.min(3, allMoves.length));
         return candidates[Math.floor(Math.random() * candidates.length)];
       }
       return allMoves[0];
@@ -3967,11 +5545,42 @@
       const rawMoves = MovementPattern.getMoves(piece, this.board, false).filter((m) => m.type !== "threat");
       return this.modifierSystem ? this.modifierSystem.getModifiedMoves(piece, rawMoves) : rawMoves;
     }
-    executeMove(piece, toCol, toRow) {
+    executeMove(piece, toCol, toRow, moveData = {}) {
       const fromCol = piece.col;
       const fromRow = piece.row;
       const target = this.board.getPieceAt(toCol, toRow);
       let captured = null;
+      if (moveData.type === "castle") {
+        const rook = this.board.getPieceAt(moveData.rookFromCol, piece.row);
+        if (rook) {
+          const kingFrom = this.board.getTile(fromCol, fromRow);
+          const kingTo = this.board.getTile(toCol, toRow);
+          kingFrom.removePiece();
+          kingTo.setPiece(piece);
+          piece.hasMoved = true;
+          piece.moveCount++;
+          const rookFrom = this.board.getTile(moveData.rookFromCol, piece.row);
+          const rookTo = this.board.getTile(moveData.rookToCol, piece.row);
+          rookFrom.removePiece();
+          rookTo.setPiece(rook);
+          rook.hasMoved = true;
+          rook.moveCount++;
+          return {
+            success: true,
+            piece,
+            from: { col: fromCol, row: fromRow },
+            to: { col: toCol, row: toRow },
+            captured: null,
+            promoted: false,
+            extraTurn: false,
+            castle: {
+              rook,
+              rookFrom: { col: moveData.rookFromCol, row: piece.row },
+              rookTo: { col: moveData.rookToCol, row: piece.row }
+            }
+          };
+        }
+      }
       if (target && target.team !== piece.team) {
         if (!this.captureResolver.canCapture(piece, toCol, toRow)) {
           return { success: false, reason: "protected" };
@@ -4238,95 +5847,6 @@
     }
   };
 
-  // src/ai/Evaluator.js
-  var Evaluator = class {
-    static evaluateBoard(board, team) {
-      const enemyTeam = team === "player" ? "enemy" : "player";
-      let score = 0;
-      for (const piece of board.getTeamPieces(team)) {
-        score += PIECE_VALUES[piece.type] * 100;
-      }
-      for (const piece of board.getTeamPieces(enemyTeam)) {
-        score -= PIECE_VALUES[piece.type] * 100;
-      }
-      let ownMoves = 0;
-      let enemyMoves = 0;
-      for (const p of board.getTeamPieces(team)) {
-        ownMoves += MovementPattern.getMoves(p, board, false).length;
-      }
-      for (const p of board.getTeamPieces(enemyTeam)) {
-        enemyMoves += MovementPattern.getMoves(p, board, false).length;
-      }
-      score += (ownMoves - enemyMoves) * 2;
-      score += this.evaluateKingSafety(board, team);
-      score -= this.evaluateKingSafety(board, enemyTeam);
-      const centerCols = [Math.floor(board.cols / 2) - 1, Math.floor(board.cols / 2)];
-      const centerRows = [Math.floor(board.rows / 2) - 1, Math.floor(board.rows / 2)];
-      for (const c of centerCols) {
-        for (const r of centerRows) {
-          const piece = board.getPieceAt(c, r);
-          if (piece) {
-            score += piece.team === team ? 10 : -10;
-          }
-        }
-      }
-      return score;
-    }
-    static evaluateKingSafety(board, team) {
-      const king = board.findKing(team);
-      if (!king) return -5e3;
-      const enemyTeam = team === "player" ? "enemy" : "player";
-      let safety = 0;
-      for (const enemy of board.getTeamPieces(enemyTeam)) {
-        const dist = Math.abs(enemy.col - king.col) + Math.abs(enemy.row - king.row);
-        if (dist <= 2) safety -= PIECE_VALUES[enemy.type] * 15;
-        else if (dist <= 4) safety -= PIECE_VALUES[enemy.type] * 3;
-      }
-      for (const friend of board.getTeamPieces(team)) {
-        if (friend === king) continue;
-        const dist = Math.abs(friend.col - king.col) + Math.abs(friend.row - king.row);
-        if (dist <= 2) safety += 5;
-      }
-      return safety;
-    }
-    static minimax(board, depth, isMaximizing, team, alpha = -Infinity, beta = Infinity) {
-      if (depth === 0) {
-        return { score: this.evaluateBoard(board, team) };
-      }
-      const currentTeam = isMaximizing ? team : team === "player" ? "enemy" : "player";
-      const pieces = board.getTeamPieces(currentTeam);
-      let bestMove = null;
-      let bestScore = isMaximizing ? -Infinity : Infinity;
-      for (const piece of pieces) {
-        if (piece.isFrozen) continue;
-        const moves = MovementPattern.getMoves(piece, board, false).filter((m) => m.type !== "threat");
-        for (const move of moves) {
-          const boardCopy = board.clone();
-          const pieceCopy = boardCopy.getPieceAt(piece.col, piece.row);
-          if (!pieceCopy) continue;
-          boardCopy.movePiece(pieceCopy, move.col, move.row);
-          const result = this.minimax(boardCopy, depth - 1, !isMaximizing, team, alpha, beta);
-          if (isMaximizing) {
-            if (result.score > bestScore) {
-              bestScore = result.score;
-              bestMove = { piece, move, score: bestScore };
-            }
-            alpha = Math.max(alpha, bestScore);
-          } else {
-            if (result.score < bestScore) {
-              bestScore = result.score;
-              bestMove = { piece, move, score: bestScore };
-            }
-            beta = Math.min(beta, bestScore);
-          }
-          if (beta <= alpha) break;
-        }
-        if (beta <= alpha) break;
-      }
-      return bestMove || { score: bestScore };
-    }
-  };
-
   // src/ai/BossAI.js
   var BossAI = class {
     constructor(board, eventBus, bossData) {
@@ -4380,7 +5900,7 @@
       });
     }
     getBestMove() {
-      const depth = this.currentPhase >= 2 ? 3 : 2;
+      const depth = this.currentPhase >= 2 ? 4 : 3;
       const result = Evaluator.minimax(this.board, depth, true, TEAMS.ENEMY);
       if (result && result.piece && result.move) {
         return result;
@@ -4395,20 +5915,17 @@
         if (piece.isFrozen) continue;
         const moves = MovementPattern.getMoves(piece, this.board, false).filter((m) => m.type !== "threat");
         for (const move of moves) {
-          let score = Math.random() * 5;
-          if (move.type === "capture") {
-            const target = this.board.getPieceAt(move.col, move.row);
-            if (target) score += PIECE_VALUES[target.type] * 100;
-          }
-          const playerKing = this.board.findKing(TEAMS.PLAYER);
-          if (playerKing) {
-            const dist = Math.abs(move.col - playerKing.col) + Math.abs(move.row - playerKing.row);
-            score += (20 - dist) * 3;
-          }
+          let score = AIBehaviors.evaluateMove(
+            piece,
+            move,
+            this.board,
+            TEAMS.ENEMY,
+            TEAMS.PLAYER
+          );
           const ownKing = this.board.findKing(TEAMS.ENEMY);
           if (ownKing && piece.type !== PIECE_TYPES.KING) {
             const distToOwnKing = Math.abs(move.col - ownKing.col) + Math.abs(move.row - ownKing.row);
-            if (distToOwnKing <= 2) score += 10;
+            if (distToOwnKing <= 2) score += 15;
           }
           if (score > bestScore) {
             bestScore = score;
@@ -4454,6 +5971,12 @@
       this.bossAI = null;
       this.bossPhaseMessage = "";
       this.bossPhaseTimer = 0;
+      this.deployPhase = false;
+      this.deployAvailable = true;
+      this.deploySelectedPiece = null;
+      this.deployHoverReady = false;
+      this.deployHoverEnter = false;
+      this.deployTime = 0;
     }
     enter(params = {}) {
       this.encounterParams = params;
@@ -4525,6 +6048,11 @@
           }
         }
       }
+      this.deployPhase = false;
+      this.deployAvailable = true;
+      this.deploySelectedPiece = null;
+      this.deployHoverReady = false;
+      this.deployHoverEnter = false;
       this.showStatus("Your move");
       this.bindInput();
     }
@@ -4574,15 +6102,26 @@
     }
     handleClick(data) {
       if (this.animatingMove) return;
-      if (this.pendingPromotion) {
-        this.handlePromotionClick(data);
-        return;
-      }
       if (this.gameOver) {
         this.onCombatFinished();
         return;
       }
+      if (this.deployPhase) {
+        this.handleDeployClick(data);
+        return;
+      }
+      if (this.pendingPromotion) {
+        this.handlePromotionClick(data);
+        return;
+      }
       if (!this.combatManager.turnManager.isPlayerTurn) return;
+      if (this.deployAvailable) {
+        const dbtn = this.getDeployEnterButton();
+        if (data.x >= dbtn.x && data.x <= dbtn.x + dbtn.w && data.y >= dbtn.y && data.y <= dbtn.y + dbtn.h) {
+          this.enterDeploy();
+          return;
+        }
+      }
       const pos = this.boardRenderer.screenToBoard(data.x, data.y);
       if (!pos) return;
       const { col, row } = pos;
@@ -4607,8 +6146,25 @@
     handleMouseMove(data) {
       if (!this.boardRenderer) return;
       this.boardRenderer.hoverTile = this.boardRenderer.screenToBoard(data.x, data.y);
+      if (this.deployPhase) {
+        const btn = this.getReadyButton();
+        this.deployHoverReady = data.x >= btn.x && data.x <= btn.x + btn.w && data.y >= btn.y && data.y <= btn.y + btn.h;
+      }
+      if (this.deployAvailable && !this.deployPhase) {
+        const dbtn = this.getDeployEnterButton();
+        this.deployHoverEnter = data.x >= dbtn.x && data.x <= dbtn.x + dbtn.w && data.y >= dbtn.y && data.y <= dbtn.y + dbtn.h;
+      }
     }
     handleKey(data) {
+      if (this.deployPhase) {
+        if (data.code === "Enter" || data.code === "Space") {
+          this.finishDeploy();
+        } else if (data.code === "Escape") {
+          this.deploySelectedPiece = null;
+          this.boardRenderer.selectedPiece = null;
+        }
+        return;
+      }
       if (data.code === "Escape") {
         if (this.pendingPromotion) return;
         if (this.selectedPiece) {
@@ -4616,6 +6172,9 @@
         } else if (this.stateMachine.states.has("pause")) {
           this.stateMachine.push("pause");
         }
+      }
+      if (data.code === "KeyD" && this.deployAvailable && !this.deployPhase && !this.animatingMove && this.combatManager.turnManager.isPlayerTurn) {
+        this.enterDeploy();
       }
     }
     selectPiece(piece) {
@@ -4630,7 +6189,242 @@
       this.boardRenderer.selectedPiece = null;
       this.boardRenderer.legalMoves = [];
     }
+    // --- Deployment phase ---
+    getDeployRows() {
+      return [this.board.rows - 1, this.board.rows - 2];
+    }
+    isDeployZone(col, row) {
+      const rows = this.getDeployRows();
+      return rows.includes(row) && col >= 0 && col < this.board.cols;
+    }
+    handleDeployClick(data) {
+      const btn = this.getReadyButton();
+      if (data.x >= btn.x && data.x <= btn.x + btn.w && data.y >= btn.y && data.y <= btn.y + btn.h) {
+        this.finishDeploy();
+        return;
+      }
+      const pos = this.boardRenderer.screenToBoard(data.x, data.y);
+      if (!pos) return;
+      const clickedPiece = this.board.getPieceAt(pos.col, pos.row);
+      if (this.deploySelectedPiece) {
+        if (clickedPiece === this.deploySelectedPiece) {
+          this.deploySelectedPiece = null;
+          this.boardRenderer.selectedPiece = null;
+          return;
+        }
+        if (clickedPiece && clickedPiece.team === TEAMS.PLAYER) {
+          this.swapPiecePositions(this.deploySelectedPiece, clickedPiece);
+          this.deploySelectedPiece = null;
+          this.boardRenderer.selectedPiece = null;
+          return;
+        }
+        if (!clickedPiece && this.isDeployZone(pos.col, pos.row)) {
+          const tile = this.board.getTile(pos.col, pos.row);
+          if (tile && tile.isEmpty() && tile.isPassable()) {
+            const fromTile = this.board.getTile(this.deploySelectedPiece.col, this.deploySelectedPiece.row);
+            fromTile.removePiece();
+            tile.setPiece(this.deploySelectedPiece);
+            this.deploySelectedPiece = null;
+            this.boardRenderer.selectedPiece = null;
+            return;
+          }
+        }
+        this.deploySelectedPiece = null;
+        this.boardRenderer.selectedPiece = null;
+      } else {
+        if (clickedPiece && clickedPiece.team === TEAMS.PLAYER) {
+          this.deploySelectedPiece = clickedPiece;
+          this.boardRenderer.selectedPiece = clickedPiece;
+        }
+      }
+    }
+    swapPiecePositions(a, b) {
+      const tileA = this.board.getTile(a.col, a.row);
+      const tileB = this.board.getTile(b.col, b.row);
+      tileA.removePiece();
+      tileB.removePiece();
+      tileA.setPiece(b);
+      tileB.setPiece(a);
+    }
+    getReadyButton() {
+      const ts = this.boardRenderer.tileSize;
+      const bw = this.board.cols * ts;
+      const bx = this.boardRenderer.offsetX;
+      const by = this.boardRenderer.offsetY + this.board.rows * ts;
+      return {
+        x: bx + bw / 2 - 70,
+        y: by + 22,
+        w: 140,
+        h: 40
+      };
+    }
+    getDeployEnterButton() {
+      const w = this.renderer.width;
+      return { x: w - 90, y: 6, w: 74, h: 26 };
+    }
+    enterDeploy() {
+      this.deployPhase = true;
+      this.deploySelectedPiece = null;
+      this.deployHoverReady = false;
+      this.deployTime = 0;
+      this.showStatus("Deploy your pieces");
+    }
+    finishDeploy() {
+      this.deployPhase = false;
+      this.deploySelectedPiece = null;
+      this.deployHoverReady = false;
+      this.boardRenderer.selectedPiece = null;
+      this.showStatus("Your move");
+    }
+    // Drawn inside the screen-shake transform, on top of the board tiles+pieces
+    drawDeployOverlay(ctx) {
+      const ts = this.boardRenderer.tileSize;
+      const ox = this.boardRenderer.offsetX;
+      const oy = this.boardRenderer.offsetY;
+      const bw = this.board.cols * ts;
+      const bh = this.board.rows * ts;
+      const deployRows = this.getDeployRows();
+      const deployTopRow = Math.min(...deployRows);
+      const dzY = oy + deployTopRow * ts;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fillRect(ox, oy, bw, dzY - oy);
+      const pulse = 0.04 + Math.sin(this.deployTime * 2.5) * 0.02;
+      ctx.fillStyle = `rgba(200, 168, 78, ${pulse})`;
+      ctx.fillRect(ox, dzY, bw, bh - (dzY - oy));
+      const borderAlpha = 0.35 + Math.sin(this.deployTime * 3) * 0.2;
+      ctx.save();
+      ctx.strokeStyle = `rgba(200, 168, 78, ${borderAlpha})`;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(ox + 1, dzY, bw - 2, bh - (dzY - oy) - 1);
+      ctx.setLineDash([]);
+      ctx.restore();
+      ctx.save();
+      ctx.font = "bold 10px monospace";
+      ctx.fillStyle = `rgba(200, 168, 78, ${0.5 + Math.sin(this.deployTime * 3) * 0.2})`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("DEPLOY ZONE", ox + bw / 2, dzY - 4);
+      ctx.restore();
+      if (this.deploySelectedPiece) {
+        for (const row of deployRows) {
+          for (let col = 0; col < this.board.cols; col++) {
+            const tile = this.board.getTile(col, row);
+            if (tile && tile.isEmpty() && tile.isPassable()) {
+              const pos = this.boardRenderer.boardToScreen(col, row);
+              ctx.fillStyle = `rgba(200, 168, 78, ${0.08 + Math.sin(this.deployTime * 3) * 0.04})`;
+              ctx.fillRect(pos.x, pos.y, ts, ts);
+              ctx.fillStyle = `rgba(200, 168, 78, 0.35)`;
+              ctx.beginPath();
+              ctx.arc(pos.x + ts / 2, pos.y + ts / 2, ts * 0.12, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+      }
+      const playerPieces = this.board.getTeamPieces(TEAMS.PLAYER);
+      for (const piece of playerPieces) {
+        const pos = this.boardRenderer.boardToScreen(piece.col, piece.row);
+        const m = 3;
+        const s = 7;
+        const isSelected = piece === this.deploySelectedPiece;
+        ctx.strokeStyle = isSelected ? "#fff" : UI_COLORS.gold;
+        ctx.lineWidth = isSelected ? 2 : 1.5;
+        ctx.beginPath();
+        ctx.moveTo(pos.x + m, pos.y + m + s);
+        ctx.lineTo(pos.x + m, pos.y + m);
+        ctx.lineTo(pos.x + m + s, pos.y + m);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pos.x + ts - m - s, pos.y + m);
+        ctx.lineTo(pos.x + ts - m, pos.y + m);
+        ctx.lineTo(pos.x + ts - m, pos.y + m + s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pos.x + m, pos.y + ts - m - s);
+        ctx.lineTo(pos.x + m, pos.y + ts - m);
+        ctx.lineTo(pos.x + m + s, pos.y + ts - m);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pos.x + ts - m - s, pos.y + ts - m);
+        ctx.lineTo(pos.x + ts - m, pos.y + ts - m);
+        ctx.lineTo(pos.x + ts - m, pos.y + ts - m - s);
+        ctx.stroke();
+        if (isSelected) {
+          ctx.save();
+          ctx.shadowColor = UI_COLORS.gold;
+          ctx.shadowBlur = 10;
+          ctx.strokeStyle = UI_COLORS.gold;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(pos.x + 1, pos.y + 1, ts - 2, ts - 2);
+          ctx.restore();
+        }
+      }
+    }
+    // Drawn outside screen-shake, on top of the HUD
+    drawDeployChrome(ctx) {
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      const ts = this.boardRenderer.tileSize;
+      const ox = this.boardRenderer.offsetX;
+      const oy = this.boardRenderer.offsetY;
+      const bw = this.board.cols * ts;
+      const bh = this.board.rows * ts;
+      const bannerH = 48;
+      const bannerGrad = ctx.createLinearGradient(0, 0, 0, bannerH);
+      bannerGrad.addColorStop(0, "rgba(40, 32, 10, 0.95)");
+      bannerGrad.addColorStop(0.7, "rgba(40, 32, 10, 0.85)");
+      bannerGrad.addColorStop(1, "rgba(40, 32, 10, 0)");
+      ctx.fillStyle = bannerGrad;
+      ctx.fillRect(0, 0, w, bannerH);
+      const lineAlpha = 0.4 + Math.sin(this.deployTime * 3) * 0.15;
+      ctx.strokeStyle = `rgba(200, 168, 78, ${lineAlpha})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.15, bannerH - 2);
+      ctx.lineTo(w * 0.85, bannerH - 2);
+      ctx.stroke();
+      ctx.save();
+      ctx.font = `bold 20px Georgia, 'Times New Roman', serif`;
+      ctx.fillStyle = UI_COLORS.gold;
+      ctx.shadowColor = "rgba(200, 168, 78, 0.5)";
+      ctx.shadowBlur = 12;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("DEPLOY PHASE", w / 2, 22);
+      ctx.restore();
+      const instrY = oy + bh + 6;
+      ctx.font = "11px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      if (this.deploySelectedPiece) {
+        ctx.fillStyle = UI_COLORS.gold;
+        ctx.fillText("Click another piece to swap, or click empty to cancel", w / 2, instrY);
+      } else {
+        ctx.fillText("Click a piece to select, then click another to swap positions", w / 2, instrY);
+      }
+      const btn = this.getReadyButton();
+      ctx.save();
+      ctx.shadowColor = UI_COLORS.gold;
+      ctx.shadowBlur = this.deployHoverReady ? 16 : 8;
+      ctx.beginPath();
+      UITheme.roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 6);
+      ctx.fillStyle = "rgba(0,0,0,0.01)";
+      ctx.fill();
+      ctx.restore();
+      UITheme.drawButton(ctx, btn.x, btn.y, btn.w, btn.h, "READY", this.deployHoverReady, {
+        fontSize: 15,
+        hoverColor: "rgba(200, 168, 78, 0.3)"
+      });
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText("Enter / Space", btn.x + btn.w / 2, btn.y + btn.h + 4);
+    }
     startMoveAnimation(piece, move) {
+      this.deployAvailable = false;
       this.deselect();
       this.animatingMove = {
         piece,
@@ -4640,11 +6434,12 @@
         toRow: move.row,
         progress: 0,
         duration: ANIMATION.moveDuration,
-        moveType: move.type
+        moveType: move.type,
+        moveData: move
       };
     }
     finishMove(anim) {
-      const result = this.combatManager.executeMove(anim.piece, anim.toCol, anim.toRow);
+      const result = this.combatManager.executeMove(anim.piece, anim.toCol, anim.toRow, anim.moveData);
       if (!result.success) return;
       this.boardRenderer.lastMove = { from: result.from, to: result.to };
       if (result.captured) {
@@ -4809,6 +6604,7 @@
       }
     }
     update(dt) {
+      if (this.deployPhase) this.deployTime += dt;
       if (this.statusTimer > 0) this.statusTimer -= dt;
       if (this.bossPhaseTimer > 0) this.bossPhaseTimer -= dt;
       this.floatingText.update(dt);
@@ -4844,14 +6640,16 @@
         const anim = this.animatingMove;
         const from = this.boardRenderer.boardToScreen(anim.fromCol, anim.fromRow);
         const to = this.boardRenderer.boardToScreen(anim.toCol, anim.toRow);
-        const t = easeOutCubic(anim.progress);
+        const t = easeOutCubic2(anim.progress);
         const x = from.x + (to.x - from.x) * t;
         const y = from.y + (to.y - from.y) * t;
         PieceRenderer.draw(ctx, anim.piece, x, y, this.boardRenderer.tileSize);
       }
+      if (this.deployPhase) this.drawDeployOverlay(ctx);
       ctx.restore();
       this.floatingText.render(ctx);
       this.drawUI(ctx);
+      if (this.deployPhase) this.drawDeployChrome(ctx);
       if (this.bossPhaseTimer > 0) this.drawBossPhase(ctx);
       if (this.pendingPromotion) this.drawPromotionUI(ctx);
       if (this.gameOver) this.drawGameOverOverlay(ctx);
@@ -4860,110 +6658,143 @@
       const tm = this.combatManager ? this.combatManager.turnManager : null;
       const turnNum = tm ? Math.floor(tm.turnNumber / 2) + 1 : 1;
       const isPlayerTurn = tm ? tm.isPlayerTurn : true;
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(0, 0, this.renderer.width, 44);
-      ctx.font = "14px monospace";
+      const w = this.renderer.width;
+      const barGrad = ctx.createLinearGradient(0, 0, 0, 40);
+      barGrad.addColorStop(0, "rgba(9,9,13,0.85)");
+      barGrad.addColorStop(1, "rgba(9,9,13,0)");
+      ctx.fillStyle = barGrad;
+      ctx.fillRect(0, 0, w, 40);
+      ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(`Turn ${turnNum}`, 16, 22);
-      ctx.fillStyle = isPlayerTurn ? UI_COLORS.success : UI_COLORS.danger;
-      ctx.font = "bold 14px monospace";
+      ctx.fillText(`Turn ${turnNum}`, 16, 20);
+      ctx.font = "bold 13px monospace";
       ctx.textAlign = "center";
-      ctx.fillText(isPlayerTurn ? "YOUR TURN" : "ENEMY TURN", this.renderer.width / 2, 22);
+      if (this.deployPhase) {
+      } else if (isPlayerTurn) {
+        ctx.fillStyle = UI_COLORS.accent;
+        ctx.fillText("YOUR TURN", w / 2, 20);
+      } else {
+        ctx.fillStyle = UI_COLORS.danger;
+        ctx.fillText("ENEMY TURN", w / 2, 20);
+      }
       if (this.combatManager) {
         ctx.fillStyle = UI_COLORS.gold;
-        ctx.font = "14px monospace";
+        ctx.font = "12px monospace";
         ctx.textAlign = "right";
-        ctx.fillText(`Gold: ${this.combatManager.goldEarned}`, this.renderer.width - 16, 22);
+        const goldX = this.deployAvailable && !this.deployPhase ? w - 100 : w - 16;
+        ctx.fillText(`${this.combatManager.goldEarned}g`, goldX, 20);
+      }
+      if (this.deployAvailable && !this.deployPhase && isPlayerTurn) {
+        const dbtn = this.getDeployEnterButton();
+        UITheme.drawButton(ctx, dbtn.x, dbtn.y, dbtn.w, dbtn.h, "Deploy", this.deployHoverEnter, {
+          fontSize: 11,
+          hoverColor: "rgba(200, 168, 78, 0.2)"
+        });
       }
       if (this.statusTimer > 0 && this.statusMessage) {
         const alpha = Math.min(1, this.statusTimer);
         ctx.globalAlpha = alpha;
-        ctx.font = "bold 16px monospace";
+        ctx.font = "bold 14px monospace";
         ctx.fillStyle = UI_COLORS.accent;
         ctx.textAlign = "center";
-        ctx.fillText(this.statusMessage, this.renderer.width / 2, 62);
+        ctx.fillText(this.statusMessage, w / 2, 54);
         ctx.globalAlpha = 1;
       }
       this.drawCapturedPieces(ctx);
     }
     drawCapturedPieces(ctx) {
-      const size = 22;
-      const spacing = 24;
-      const y = this.renderer.height - 36;
+      const size = 20;
+      const spacing = 22;
+      const y = this.renderer.height - 32;
       if (this.capturedByPlayer.length > 0) {
-        ctx.font = "11px monospace";
+        ctx.font = "10px monospace";
         ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = "left";
-        ctx.fillText("Captured:", 12, y - 4);
+        ctx.textBaseline = "middle";
+        ctx.fillText("Captured:", 12, y - 2);
         for (let i = 0; i < this.capturedByPlayer.length; i++) {
-          PieceRenderer.draw(ctx, this.capturedByPlayer[i], 12 + i * spacing, y, size);
+          PieceRenderer.draw(ctx, this.capturedByPlayer[i], 12 + i * spacing, y + 4, size);
         }
       }
     }
     drawPromotionUI(ctx) {
-      ctx.fillStyle = "rgba(0,0,0,0.65)";
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
       ctx.fillRect(0, 0, this.renderer.width, this.renderer.height);
-      ctx.font = "bold 22px monospace";
-      ctx.fillStyle = UI_COLORS.text;
-      ctx.textAlign = "center";
-      ctx.fillText("Choose Promotion", this.renderer.width / 2, this.renderer.height / 2 - 65);
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      UITheme.drawTitle(ctx, "Promote", w / 2, h / 2 - 68, 24);
       const btnW = 70;
       const btnH = 70;
-      const gap = 10;
+      const gap = 12;
       const totalW = this.promotionChoices.length * (btnW + gap) - gap;
-      const startX = (this.renderer.width - totalW) / 2;
-      const y = this.renderer.height / 2 - btnH / 2;
+      const startX = (w - totalW) / 2;
+      const y = h / 2 - btnH / 2;
       for (let i = 0; i < this.promotionChoices.length; i++) {
         const bx = startX + i * (btnW + gap);
-        ctx.fillStyle = UI_COLORS.panel;
-        ctx.fillRect(bx, y, btnW, btnH);
-        ctx.strokeStyle = UI_COLORS.panelBorder;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(bx, y, btnW, btnH);
+        UITheme.drawPanel(ctx, bx, y, btnW, btnH, { radius: 6, shadow: false });
         const tempPiece = new Piece(this.promotionChoices[i], this.pendingPromotion.team);
-        PieceRenderer.draw(ctx, tempPiece, bx + 3, y + 3, btnW - 6);
+        PieceRenderer.draw(ctx, tempPiece, bx + 5, y + 5, btnW - 10);
         ctx.font = "10px monospace";
         ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = "center";
-        ctx.fillText(this.promotionChoices[i], bx + btnW / 2, y + btnH + 14);
+        ctx.textBaseline = "top";
+        ctx.fillText(this.promotionChoices[i], bx + btnW / 2, y + btnH + 8);
       }
     }
     drawBossPhase(ctx) {
       const alpha = Math.min(1, this.bossPhaseTimer * 0.8);
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(0, this.renderer.height / 2 - 30, this.renderer.width, 60);
-      ctx.font = "bold 22px monospace";
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      const barGrad = ctx.createLinearGradient(0, h / 2 - 30, 0, h / 2 + 30);
+      barGrad.addColorStop(0, "rgba(60,10,15,0.7)");
+      barGrad.addColorStop(0.5, "rgba(60,10,15,0.9)");
+      barGrad.addColorStop(1, "rgba(60,10,15,0.7)");
+      ctx.fillStyle = barGrad;
+      ctx.fillRect(0, h / 2 - 30, w, 60);
+      ctx.font = `bold 22px Georgia, serif`;
       ctx.fillStyle = UI_COLORS.danger;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(this.bossPhaseMessage, this.renderer.width / 2, this.renderer.height / 2);
+      ctx.fillText(this.bossPhaseMessage, w / 2, h / 2);
       ctx.globalAlpha = 1;
     }
     drawGameOverOverlay(ctx) {
-      ctx.fillStyle = "rgba(0,0,0,0.75)";
+      ctx.fillStyle = "rgba(0,0,0,0.8)";
       ctx.fillRect(0, 0, this.renderer.width, this.renderer.height);
+      const w = this.renderer.width;
+      const h = this.renderer.height;
       const isWin = this.winner === TEAMS.PLAYER;
-      ctx.font = "bold 52px monospace";
-      ctx.fillStyle = isWin ? UI_COLORS.success : UI_COLORS.danger;
+      if (isWin) {
+        UITheme.drawTitle(ctx, "VICTORY", w / 2, h / 2 - 50, 48);
+      } else {
+        ctx.save();
+        ctx.font = `bold 48px Georgia, 'Times New Roman', serif`;
+        ctx.fillStyle = UI_COLORS.danger;
+        ctx.shadowColor = "rgba(192, 64, 80, 0.4)";
+        ctx.shadowBlur = 20;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("DEFEAT", w / 2, h / 2 - 50);
+        ctx.restore();
+      }
+      ctx.font = "15px monospace";
+      ctx.fillStyle = UI_COLORS.text;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(isWin ? "VICTORY" : "DEFEAT", this.renderer.width / 2, this.renderer.height / 2 - 50);
-      ctx.font = "18px monospace";
-      ctx.fillStyle = UI_COLORS.text;
       ctx.fillText(
         `Turns: ${Math.floor(this.turnCount / 2)}  |  Captured: ${this.capturedByPlayer.length}  |  Gold: ${this.combatManager ? this.combatManager.goldEarned : 0}`,
-        this.renderer.width / 2,
-        this.renderer.height / 2 + 10
+        w / 2,
+        h / 2 + 10
       );
-      ctx.font = "14px monospace";
+      ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
-      ctx.fillText("Click to continue", this.renderer.width / 2, this.renderer.height / 2 + 50);
+      ctx.fillText("Click to continue", w / 2, h / 2 + 45);
     }
   };
-  function easeOutCubic(t) {
+  function easeOutCubic2(t) {
     return 1 - Math.pow(1 - t, 3);
   }
 
@@ -5005,12 +6836,12 @@
       this.eventBus.on("keydown", this.keyHandler);
     }
     getItemBounds() {
-      const cardW = 160;
-      const cardH = 180;
-      const gap = 16;
+      const cardW = 155;
+      const cardH = 190;
+      const gap = 14;
       const totalW = this.items.length * (cardW + gap) - gap;
       const startX = (this.renderer.width - totalW) / 2;
-      const y = this.renderer.height / 2 - cardH / 2;
+      const y = this.renderer.height / 2 - cardH / 2 + 10;
       return this.items.map((item, i) => ({
         item,
         x: startX + i * (cardW + gap),
@@ -5022,7 +6853,7 @@
     getLeaveButton() {
       const bw = 140;
       const bh = 40;
-      return { x: (this.renderer.width - bw) / 2, y: this.renderer.height - 80, w: bw, h: bh };
+      return { x: (this.renderer.width - bw) / 2, y: this.renderer.height - 75, w: bw, h: bh };
     }
     handleClick(data) {
       if (this.pendingModifier) {
@@ -5117,96 +6948,83 @@
     }
     render(ctx) {
       const w = this.renderer.width;
-      ctx.font = "bold 32px monospace";
-      ctx.fillStyle = UI_COLORS.text;
-      ctx.textAlign = "center";
-      ctx.fillText("Shop", w / 2, 50);
-      ctx.font = "bold 18px monospace";
+      const h = this.renderer.height;
+      UITheme.drawBackground(ctx, w, h);
+      UITheme.drawVignette(ctx, w, h, 0.4);
+      UITheme.drawTitle(ctx, "Shop", w / 2, 46, 30);
+      ctx.font = "bold 16px monospace";
       ctx.fillStyle = UI_COLORS.gold;
-      ctx.fillText(`Gold: ${this.runManager.gold}`, w / 2, 85);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${this.runManager.gold}g`, w / 2, 80);
+      UITheme.drawDivider(ctx, w / 2 - 100, 98, 200);
       const bounds = this.getItemBounds();
       for (let i = 0; i < bounds.length; i++) {
         const b = bounds[i];
         const item = b.item;
         const isHover = this.hoverIndex === i;
         const canAfford = this.runManager.gold >= item.price;
-        ctx.fillStyle = isHover ? UI_COLORS.panel : UI_COLORS.bgLight;
-        ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.strokeStyle = canAfford ? isHover ? UI_COLORS.accent : UI_COLORS.panelBorder : "#555";
-        ctx.lineWidth = isHover ? 2 : 1;
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
+          highlight: isHover && canAfford,
+          glow: isHover && canAfford,
+          fill: isHover ? "#1a1a28" : UI_COLORS.panel
+        });
+        const catColor = item.category === "relic" ? UI_COLORS.gold : item.category === "modifier" ? UI_COLORS.info : UI_COLORS.textDim;
+        ctx.beginPath();
+        UITheme.roundRect(ctx, b.x + 1, b.y + 1, b.w - 2, 2, 1);
+        ctx.fillStyle = catColor;
+        ctx.globalAlpha = 0.5;
+        ctx.fill();
+        ctx.globalAlpha = 1;
         if (item.category === "piece") {
           const tempPiece = new Piece(item.type, TEAMS.PLAYER);
-          PieceRenderer.draw(ctx, tempPiece, b.x + (b.w - 40) / 2, b.y + 12, 40);
+          PieceRenderer.draw(ctx, tempPiece, b.x + (b.w - 36) / 2, b.y + 14, 36);
         } else {
-          ctx.font = "28px serif";
-          ctx.fillStyle = item.category === "relic" ? UI_COLORS.gold : UI_COLORS.info;
+          ctx.font = "24px serif";
+          ctx.fillStyle = catColor;
           ctx.textAlign = "center";
-          ctx.fillText(item.category === "relic" ? "\u2605" : "\u25C6", b.x + b.w / 2, b.y + 40);
+          ctx.textBaseline = "middle";
+          ctx.fillText(item.category === "relic" ? "\u2605" : "\u25C6", b.x + b.w / 2, b.y + 36);
         }
-        ctx.font = "bold 12px monospace";
+        ctx.font = "bold 11px monospace";
         ctx.fillStyle = UI_COLORS.text;
         ctx.textAlign = "center";
-        ctx.fillText(item.name, b.x + b.w / 2, b.y + 70);
+        ctx.textBaseline = "middle";
+        ctx.fillText(item.name, b.x + b.w / 2, b.y + 68);
         ctx.font = "10px monospace";
         ctx.fillStyle = UI_COLORS.textDim;
-        this.wrapText(ctx, item.description, b.x + b.w / 2, b.y + 88, b.w - 16, 13);
-        ctx.font = "bold 14px monospace";
+        UITheme.wrapText(ctx, item.description, b.x + b.w / 2, b.y + 86, b.w - 18, 13);
+        ctx.font = "bold 13px monospace";
         ctx.fillStyle = canAfford ? UI_COLORS.gold : UI_COLORS.danger;
-        ctx.fillText(`${item.price}g`, b.x + b.w / 2, b.y + b.h - 16);
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${item.price}g`, b.x + b.w / 2, b.y + b.h - 18);
       }
       const lb = this.getLeaveButton();
-      ctx.fillStyle = UI_COLORS.panel;
-      ctx.fillRect(lb.x, lb.y, lb.w, lb.h);
-      ctx.strokeStyle = UI_COLORS.panelBorder;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(lb.x, lb.y, lb.w, lb.h);
-      ctx.font = "bold 14px monospace";
-      ctx.fillStyle = UI_COLORS.text;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("Leave Shop", lb.x + lb.w / 2, lb.y + lb.h / 2);
+      UITheme.drawButton(ctx, lb.x, lb.y, lb.w, lb.h, "Leave Shop", false);
       if (this.pendingModifier) {
-        ctx.fillStyle = "rgba(0,0,0,0.65)";
-        ctx.fillRect(0, 0, w, this.renderer.height);
-        ctx.font = "bold 18px monospace";
-        ctx.fillStyle = UI_COLORS.text;
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
+        ctx.fillRect(0, 0, w, h);
+        UITheme.drawTitle(ctx, `Apply ${this.pendingModifier.name}`, w / 2, h / 2 - 65, 20);
+        ctx.font = "13px monospace";
+        ctx.fillStyle = UI_COLORS.textDim;
         ctx.textAlign = "center";
-        ctx.fillText(`Apply ${this.pendingModifier.name} to:`, w / 2, this.renderer.height / 2 - 60);
+        ctx.textBaseline = "middle";
+        ctx.fillText("Select a piece:", w / 2, h / 2 - 40);
         const pieceBounds = this.getPieceSelectionBounds();
         for (const b of pieceBounds) {
-          ctx.fillStyle = UI_COLORS.panel;
-          ctx.fillRect(b.x, b.y, b.w, b.h);
-          ctx.strokeStyle = UI_COLORS.panelBorder;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(b.x, b.y, b.w, b.h);
-          PieceRenderer.draw(ctx, b.piece, b.x + 2, b.y + 2, b.w - 4);
+          UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, { radius: 6, shadow: false });
+          PieceRenderer.draw(ctx, b.piece, b.x + 4, b.y + 4, b.w - 8);
         }
       }
       if (this.messageTimer > 0 && this.message) {
         ctx.globalAlpha = Math.min(1, this.messageTimer);
-        ctx.font = "bold 16px monospace";
+        ctx.font = "bold 14px monospace";
         ctx.fillStyle = UI_COLORS.accent;
         ctx.textAlign = "center";
-        ctx.fillText(this.message, w / 2, this.renderer.height - 120);
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.message, w / 2, h - 110);
         ctx.globalAlpha = 1;
       }
-    }
-    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-      const words = text.split(" ");
-      let line = "";
-      let lineNum = 0;
-      for (const word of words) {
-        const test = line + (line ? " " : "") + word;
-        if (ctx.measureText(test).width > maxWidth && line) {
-          ctx.fillText(line, x, y + lineNum * lineHeight);
-          line = word;
-          lineNum++;
-        } else {
-          line = test;
-        }
-      }
-      if (line) ctx.fillText(line, x, y + lineNum * lineHeight);
     }
   };
 
@@ -5377,11 +7195,11 @@
     }
     getChoiceBounds() {
       if (!this.event) return [];
-      const btnW = 400;
-      const btnH = 44;
+      const btnW = 380;
+      const btnH = 42;
       const gap = 10;
       const totalH = this.event.choices.length * (btnH + gap) - gap;
-      const startY = this.renderer.height / 2 + 20;
+      const startY = this.renderer.height / 2 + 30;
       const x = (this.renderer.width - btnW) / 2;
       return this.event.choices.map((choice, i) => ({
         choice,
@@ -5569,22 +7387,39 @@
     }
     render(ctx) {
       const w = this.renderer.width;
+      const h = this.renderer.height;
       if (!this.event) return;
-      ctx.font = "bold 28px monospace";
-      ctx.fillStyle = UI_COLORS.accent;
+      UITheme.drawBackground(ctx, w, h);
+      const grad = ctx.createRadialGradient(w / 2, h * 0.3, 0, w / 2, h * 0.3, w * 0.4);
+      grad.addColorStop(0, "rgba(80, 50, 120, 0.08)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+      UITheme.drawVignette(ctx, w, h, 0.5);
+      ctx.font = "28px serif";
+      ctx.fillStyle = "rgba(200, 168, 78, 0.3)";
       ctx.textAlign = "center";
-      ctx.fillText(this.event.title, w / 2, 60);
-      ctx.font = "14px monospace";
+      ctx.textBaseline = "middle";
+      ctx.fillText("?", w / 2, 40);
+      UITheme.drawTitle(ctx, this.event.title, w / 2, 70, 26);
+      UITheme.drawDivider(ctx, w / 2 - 120, 95, 240);
+      ctx.font = "13px monospace";
       ctx.fillStyle = UI_COLORS.text;
-      this.wrapText(ctx, this.event.description, w / 2, 110, 500, 20);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      UITheme.wrapText(ctx, this.event.description, w / 2, 120, 460, 20);
       if (this.result) {
-        ctx.font = "bold 16px monospace";
+        UITheme.drawPanel(ctx, w / 2 - 220, h / 2 - 30, 440, 60, {
+          fill: "rgba(90, 158, 106, 0.1)",
+          border: UI_COLORS.success
+        });
+        ctx.font = "bold 14px monospace";
         ctx.fillStyle = UI_COLORS.success;
         ctx.textAlign = "center";
-        this.wrapText(ctx, this.result, w / 2, this.renderer.height / 2, 400, 22);
+        UITheme.wrapText(ctx, this.result, w / 2, h / 2 - 6, 400, 20);
         ctx.font = "12px monospace";
         ctx.fillStyle = UI_COLORS.textDim;
-        ctx.fillText("Click to continue", w / 2, this.renderer.height - 50);
+        ctx.fillText("Click to continue", w / 2, h - 50);
       } else {
         const bounds = this.getChoiceBounds();
         for (let i = 0; i < bounds.length; i++) {
@@ -5592,34 +7427,13 @@
           const choice = b.choice;
           const isHover = this.hoverChoice === i;
           const canChoose = this.meetsRequirement(choice);
-          ctx.fillStyle = isHover ? UI_COLORS.panel : UI_COLORS.bgLight;
-          ctx.fillRect(b.x, b.y, b.w, b.h);
-          ctx.strokeStyle = canChoose ? isHover ? UI_COLORS.accent : UI_COLORS.panelBorder : "#555";
-          ctx.lineWidth = isHover ? 2 : 1;
-          ctx.strokeRect(b.x, b.y, b.w, b.h);
-          ctx.font = "13px monospace";
-          ctx.fillStyle = canChoose ? UI_COLORS.text : UI_COLORS.textDim;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(choice.text, b.x + b.w / 2, b.y + b.h / 2);
+          UITheme.drawButton(ctx, b.x, b.y, b.w, b.h, choice.text, isHover && canChoose, {
+            fontSize: 12,
+            textColor: canChoose ? UI_COLORS.text : UI_COLORS.textDim,
+            border: canChoose ? UI_COLORS.panelBorder : "#333"
+          });
         }
       }
-    }
-    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-      const words = text.split(" ");
-      let line = "";
-      let lineNum = 0;
-      for (const word of words) {
-        const test = line + (line ? " " : "") + word;
-        if (ctx.measureText(test).width > maxWidth && line) {
-          ctx.fillText(line, x, y + lineNum * lineHeight);
-          line = word;
-          lineNum++;
-        } else {
-          line = test;
-        }
-      }
-      if (line) ctx.fillText(line, x, y + lineNum * lineHeight);
     }
   };
 
@@ -5804,43 +7618,41 @@
       const alpha = this.fadeIn;
       ctx.globalAlpha = alpha;
       const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.6);
-      grad.addColorStop(0, "rgba(20, 10, 30, 0.8)");
-      grad.addColorStop(1, "rgba(10, 5, 15, 1)");
+      grad.addColorStop(0, "rgba(40, 8, 12, 0.85)");
+      grad.addColorStop(1, "rgba(9, 5, 6, 1)");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
-      ctx.font = "bold 14px monospace";
+      const pattern = ctx.createPattern(UITheme.getChessPattern(), "repeat");
+      ctx.globalAlpha = alpha * 0.3;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = alpha;
+      ctx.font = "bold 12px monospace";
       ctx.fillStyle = UI_COLORS.danger;
       ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.letterSpacing = "3px";
       ctx.fillText(`FLOOR ${this.floor} BOSS`, w / 2, h / 2 - 80);
-      ctx.font = "bold 42px monospace";
-      ctx.fillStyle = UI_COLORS.accent;
+      ctx.letterSpacing = "0px";
+      ctx.save();
+      ctx.font = `bold 40px Georgia, 'Times New Roman', serif`;
+      ctx.shadowColor = "rgba(192, 64, 80, 0.5)";
+      ctx.shadowBlur = 24;
+      ctx.fillStyle = UI_COLORS.danger;
       ctx.fillText(this.bossData.name, w / 2, h / 2 - 30);
-      ctx.font = "italic 16px monospace";
+      ctx.restore();
+      ctx.font = "italic 15px Georgia, serif";
       ctx.fillStyle = UI_COLORS.textDim;
       ctx.fillText(this.bossData.title, w / 2, h / 2 + 10);
-      ctx.font = "13px monospace";
+      UITheme.drawDivider(ctx, w / 2 - 100, h / 2 + 30, 200);
+      ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.text;
-      this.wrapText(ctx, this.bossData.description, w / 2, h / 2 + 50, 500, 18);
-      ctx.font = "14px monospace";
+      UITheme.wrapText(ctx, this.bossData.description, w / 2, h / 2 + 55, 450, 18);
+      ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
-      ctx.fillText("Click to begin the fight", w / 2, h - 60);
+      ctx.globalAlpha = alpha * 0.6;
+      ctx.fillText("Click to begin the fight", w / 2, h - 55);
       ctx.globalAlpha = 1;
-    }
-    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-      const words = text.split(" ");
-      let line = "";
-      let lineNum = 0;
-      for (const word of words) {
-        const test = line + (line ? " " : "") + word;
-        if (ctx.measureText(test).width > maxWidth && line) {
-          ctx.fillText(line, x, y + lineNum * lineHeight);
-          line = word;
-          lineNum++;
-        } else {
-          line = test;
-        }
-      }
-      if (line) ctx.fillText(line, x, y + lineNum * lineHeight);
     }
   };
 
@@ -5881,18 +7693,22 @@
       const h = this.renderer.height;
       ctx.globalAlpha = this.fadeIn;
       const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.5);
-      grad.addColorStop(0, "rgba(255, 215, 0, 0.1)");
-      grad.addColorStop(1, "rgba(10, 10, 15, 1)");
+      grad.addColorStop(0, "rgba(200, 168, 78, 0.08)");
+      grad.addColorStop(1, "rgba(9, 9, 13, 1)");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
-      ctx.font = "bold 52px monospace";
-      ctx.fillStyle = UI_COLORS.gold;
+      const pattern = ctx.createPattern(UITheme.getChessPattern(), "repeat");
+      ctx.globalAlpha = this.fadeIn * 0.5;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = this.fadeIn;
+      UITheme.drawTitle(ctx, "VICTORY", w / 2, h / 2 - 80, 52);
+      ctx.font = "16px monospace";
+      ctx.fillStyle = UI_COLORS.text;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("VICTORY", w / 2, h / 2 - 80);
-      ctx.font = "18px monospace";
-      ctx.fillStyle = UI_COLORS.text;
       ctx.fillText("You have conquered the board!", w / 2, h / 2 - 30);
+      UITheme.drawDivider(ctx, w / 2 - 100, h / 2 - 8, 200);
       if (this.stats) {
         const lines = [
           `Battles Won: ${this.stats.battlesWon || 0}`,
@@ -5901,14 +7717,15 @@
           `Floors Cleared: ${this.stats.floorsCleared || 0}`,
           `Gold Spent: ${this.stats.goldSpent || 0}`
         ];
-        ctx.font = "14px monospace";
+        ctx.font = "13px monospace";
         ctx.fillStyle = UI_COLORS.textDim;
         for (let i = 0; i < lines.length; i++) {
-          ctx.fillText(lines[i], w / 2, h / 2 + 20 + i * 24);
+          ctx.fillText(lines[i], w / 2, h / 2 + 16 + i * 24);
         }
       }
-      ctx.font = "14px monospace";
+      ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
+      ctx.globalAlpha = this.fadeIn * 0.5;
       ctx.fillText("Click to return to menu", w / 2, h - 50);
       ctx.globalAlpha = 1;
     }
@@ -5949,33 +7766,47 @@
       const w = this.renderer.width;
       const h = this.renderer.height;
       ctx.globalAlpha = this.fadeIn;
-      const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.5);
-      grad.addColorStop(0, "rgba(80, 10, 10, 0.6)");
-      grad.addColorStop(1, "rgba(10, 5, 5, 1)");
+      const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.55);
+      grad.addColorStop(0, "rgba(60, 8, 8, 0.7)");
+      grad.addColorStop(0.6, "rgba(30, 5, 8, 0.9)");
+      grad.addColorStop(1, "rgba(9, 5, 6, 1)");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
-      ctx.font = "bold 52px monospace";
-      ctx.fillStyle = UI_COLORS.danger;
+      const pattern = ctx.createPattern(UITheme.getChessPattern(), "repeat");
+      ctx.globalAlpha = this.fadeIn * 0.3;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = this.fadeIn;
+      ctx.save();
+      ctx.font = `bold 48px Georgia, 'Times New Roman', serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(192, 64, 80, 0.35)";
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = UI_COLORS.danger;
       ctx.fillText("GAME OVER", w / 2, h / 2 - 80);
-      ctx.font = "18px monospace";
+      ctx.restore();
+      ctx.font = `italic 16px Georgia, serif`;
       ctx.fillStyle = UI_COLORS.text;
-      ctx.fillText("Your king has fallen.", w / 2, h / 2 - 30);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Your king has fallen.", w / 2, h / 2 - 32);
+      UITheme.drawDivider(ctx, w / 2 - 100, h / 2 - 10, 200);
       if (this.stats) {
-        ctx.font = "14px monospace";
-        ctx.fillStyle = UI_COLORS.textDim;
         const lines = [
           `Floor Reached: ${this.stats.floorsCleared || 0}`,
           `Battles Won: ${this.stats.battlesWon || 0}`,
           `Pieces Lost: ${this.stats.piecesLost || 0}`
         ];
+        ctx.font = "13px monospace";
+        ctx.fillStyle = UI_COLORS.textDim;
         for (let i = 0; i < lines.length; i++) {
-          ctx.fillText(lines[i], w / 2, h / 2 + 20 + i * 24);
+          ctx.fillText(lines[i], w / 2, h / 2 + 16 + i * 24);
         }
       }
-      ctx.font = "14px monospace";
+      ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
+      ctx.globalAlpha = this.fadeIn * 0.5;
       ctx.fillText("Click to return to menu", w / 2, h - 50);
       ctx.globalAlpha = 1;
     }
@@ -6017,11 +7848,11 @@
     createButtons() {
       const w = this.renderer.width;
       const h = this.renderer.height;
-      const btnW = 180;
-      const btnH = 40;
+      const btnW = 200;
+      const btnH = 42;
       const x = (w - btnW) / 2;
-      const startY = h / 2 - 40;
-      const gap = 12;
+      const startY = h / 2 - 20;
+      const gap = 14;
       this.buttons = [
         new Button(x, startY, btnW, btnH, "Resume", {
           onClick: () => this.stateMachine.pop()
@@ -6031,7 +7862,8 @@
         }),
         new Button(x, startY + 2 * (btnH + gap), btnW, btnH, "Quit to Menu", {
           color: UI_COLORS.panel,
-          hoverColor: UI_COLORS.danger,
+          hoverColor: "rgba(192, 64, 80, 0.2)",
+          hoverBorder: UI_COLORS.danger,
           onClick: () => this.stateMachine.change("mainMenu")
         })
       ];
@@ -6044,13 +7876,17 @@
     update(dt) {
     }
     render(ctx) {
-      ctx.fillStyle = "rgba(0,0,0,0.7)";
-      ctx.fillRect(0, 0, this.renderer.width, this.renderer.height);
-      ctx.font = "bold 32px monospace";
-      ctx.fillStyle = UI_COLORS.text;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("PAUSED", this.renderer.width / 2, this.renderer.height / 2 - 100);
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+      ctx.fillRect(0, 0, w, h);
+      const panelW = 280;
+      const panelH = 260;
+      const px = (w - panelW) / 2;
+      const py = (h - panelH) / 2 - 20;
+      UITheme.drawPanel(ctx, px, py, panelW, panelH, { radius: 10 });
+      UITheme.drawTitle(ctx, "PAUSED", w / 2, py + 40, 28);
+      UITheme.drawDivider(ctx, px + 30, py + 64, panelW - 60);
       for (const btn of this.buttons) {
         btn.render(ctx);
       }
@@ -6058,6 +7894,52 @@
   };
 
   // src/states/SettingsState.js
+  var DISPLAY_NAMES = {
+    original: "Original",
+    alpha: "Alpha",
+    anarcandy: "Anarcandy",
+    caliente: "Caliente",
+    california: "California",
+    cardinal: "Cardinal",
+    cburnett: "Cburnett",
+    celtic: "Celtic",
+    chess7: "Chess7",
+    chessnut: "Chessnut",
+    companion: "Companion",
+    cooke: "Cooke",
+    disguised: "Disguised",
+    dubrovny: "Dubrovny",
+    fantasy: "Fantasy",
+    fresca: "Fresca",
+    gioco: "Gioco",
+    governor: "Governor",
+    horsey: "Horsey",
+    icpieces: "ICPieces",
+    kosal: "Kosal",
+    leipzig: "Leipzig",
+    letter: "Letter",
+    maestro: "Maestro",
+    merida: "Merida",
+    monarchy: "Monarchy",
+    mono: "Mono",
+    mpchess: "MPChess",
+    pirouetti: "Pirouetti",
+    pixel: "Pixel",
+    reillycraig: "Reillycraig",
+    riohacha: "Riohacha",
+    shapes: "Shapes",
+    spatial: "Spatial",
+    staunty: "Staunty",
+    tatiana: "Tatiana"
+  };
+  var PREVIEW_TYPES = [
+    PIECE_TYPES.KING,
+    PIECE_TYPES.QUEEN,
+    PIECE_TYPES.ROOK,
+    PIECE_TYPES.BISHOP,
+    PIECE_TYPES.KNIGHT,
+    PIECE_TYPES.PAWN
+  ];
   var SettingsState = class {
     constructor() {
       this.stateMachine = null;
@@ -6067,54 +7949,314 @@
       this.clickHandler = null;
       this.moveHandler = null;
       this.keyHandler = null;
+      this.selectedIndex = 0;
+      this.scrollOffset = 0;
+      this.hoverIndex = -1;
     }
     enter() {
+      const current = PieceSetLoader.getCurrentSet();
+      this.selectedIndex = PIECE_SETS.indexOf(current);
+      if (this.selectedIndex === -1) this.selectedIndex = 0;
+      this.scrollOffset = 0;
+      this.hoverIndex = -1;
       this.createButtons();
+      this.preloadNearby();
       this.clickHandler = (data) => {
         for (const btn of this.buttons) btn.handleClick(data.x, data.y);
+        this.handleListClick(data);
       };
       this.moveHandler = (data) => {
         for (const btn of this.buttons) btn.handleMove(data.x, data.y);
+        this.handleListMove(data);
       };
       this.keyHandler = (data) => {
         if (data.code === "Escape") this.stateMachine.change("mainMenu");
+        else if (data.code === "ArrowUp") this.navigate(-1);
+        else if (data.code === "ArrowDown") this.navigate(1);
+        else if (data.code === "Enter") this.selectSet(this.selectedIndex);
+      };
+      this.wheelHandler = (data) => {
+        const { listH, itemH } = this.getListBounds();
+        const maxVisible = Math.floor(listH / itemH);
+        const maxScroll = Math.max(0, PIECE_SETS.length - maxVisible);
+        if (data.deltaY > 0) {
+          this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 3);
+        } else if (data.deltaY < 0) {
+          this.scrollOffset = Math.max(0, this.scrollOffset - 3);
+        }
       };
       this.eventBus.on("click", this.clickHandler);
       this.eventBus.on("mousemove", this.moveHandler);
       this.eventBus.on("keydown", this.keyHandler);
+      this.eventBus.on("wheel", this.wheelHandler);
     }
     exit() {
       if (this.clickHandler) this.eventBus.off("click", this.clickHandler);
       if (this.moveHandler) this.eventBus.off("mousemove", this.moveHandler);
       if (this.keyHandler) this.eventBus.off("keydown", this.keyHandler);
+      if (this.wheelHandler) this.eventBus.off("wheel", this.wheelHandler);
     }
     createButtons() {
       const w = this.renderer.width;
       const h = this.renderer.height;
       const btnW = 180;
-      const btnH = 40;
+      const btnH = 42;
       const x = (w - btnW) / 2;
       this.buttons = [
-        new Button(x, h - 80, btnW, btnH, "Back", {
+        new Button(x, h - 60, btnW, btnH, "Back", {
           onClick: () => this.stateMachine.change("mainMenu")
         })
       ];
+    }
+    getListBounds() {
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      const listW = Math.min(200, w * 0.35);
+      const listX = 20;
+      const listY = 100;
+      const listH = h - 180;
+      const itemH = 28;
+      return { listX, listY, listW, listH, itemH };
+    }
+    getPreviewBounds() {
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      const { listX, listW } = this.getListBounds();
+      const previewX = listX + listW + 20;
+      const previewW = w - previewX - 20;
+      const previewY = 100;
+      const previewH = h - 180;
+      return { previewX, previewY, previewW, previewH };
+    }
+    navigate(dir) {
+      this.selectedIndex = Math.max(0, Math.min(PIECE_SETS.length - 1, this.selectedIndex + dir));
+      this.selectSet(this.selectedIndex);
+      this.ensureVisible();
+    }
+    ensureVisible() {
+      const { listH, itemH } = this.getListBounds();
+      const maxVisible = Math.floor(listH / itemH);
+      if (this.selectedIndex < this.scrollOffset) {
+        this.scrollOffset = this.selectedIndex;
+      } else if (this.selectedIndex >= this.scrollOffset + maxVisible) {
+        this.scrollOffset = this.selectedIndex - maxVisible + 1;
+      }
+    }
+    selectSet(index) {
+      const setName = PIECE_SETS[index];
+      this.selectedIndex = index;
+      PieceSetLoader.setCurrentSet(setName);
+      this.preloadNearby();
+    }
+    preloadNearby() {
+      for (let i = -2; i <= 2; i++) {
+        const idx = this.selectedIndex + i;
+        if (idx >= 0 && idx < PIECE_SETS.length) {
+          PieceSetLoader.loadSet(PIECE_SETS[idx]);
+        }
+      }
+    }
+    handleListClick(data) {
+      const { listX, listY, listW, listH, itemH } = this.getListBounds();
+      const maxVisible = Math.floor(listH / itemH);
+      if (data.x >= listX && data.x <= listX + listW && data.y >= listY && data.y <= listY + listH) {
+        const clickedRow = Math.floor((data.y - listY) / itemH);
+        const idx = this.scrollOffset + clickedRow;
+        if (idx >= 0 && idx < PIECE_SETS.length) {
+          this.selectSet(idx);
+        }
+      }
+      const arrowH = 22;
+      if (data.x >= listX && data.x <= listX + listW) {
+        if (data.y >= listY - arrowH && data.y <= listY) {
+          this.scrollOffset = Math.max(0, this.scrollOffset - 3);
+        } else if (data.y >= listY + listH && data.y <= listY + listH + arrowH) {
+          this.scrollOffset = Math.min(
+            Math.max(0, PIECE_SETS.length - maxVisible),
+            this.scrollOffset + 3
+          );
+        }
+      }
+    }
+    handleListMove(data) {
+      const { listX, listY, listW, listH, itemH } = this.getListBounds();
+      this.hoverIndex = -1;
+      if (data.x >= listX && data.x <= listX + listW && data.y >= listY && data.y <= listY + listH) {
+        const row = Math.floor((data.y - listY) / itemH);
+        this.hoverIndex = this.scrollOffset + row;
+      }
     }
     update(dt) {
     }
     render(ctx) {
       const w = this.renderer.width;
       const h = this.renderer.height;
-      ctx.font = "bold 28px monospace";
-      ctx.fillStyle = UI_COLORS.text;
-      ctx.textAlign = "center";
-      ctx.fillText("Settings", w / 2, 50);
-      ctx.font = "14px monospace";
-      ctx.fillStyle = UI_COLORS.textDim;
-      ctx.textAlign = "center";
-      ctx.fillText("No configurable settings yet \u2014 all built-in defaults", w / 2, h / 2);
+      UITheme.drawBackground(ctx, w, h);
+      UITheme.drawVignette(ctx, w, h, 0.4);
+      UITheme.drawTitle(ctx, "Settings", w / 2, 55, 30);
+      UITheme.drawDivider(ctx, w / 2 - 100, 82, 200);
+      this.renderSetList(ctx);
+      this.renderPreview(ctx);
       for (const btn of this.buttons) {
         btn.render(ctx);
+      }
+    }
+    renderSetList(ctx) {
+      const { listX, listY, listW, listH, itemH } = this.getListBounds();
+      const maxVisible = Math.floor(listH / itemH);
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("PIECE SET", listX, listY - 4);
+      UITheme.drawPanel(ctx, listX, listY, listW, listH, { radius: 6, shadow: false });
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(listX, listY, listW, listH);
+      ctx.clip();
+      for (let i = 0; i < maxVisible && this.scrollOffset + i < PIECE_SETS.length; i++) {
+        const idx = this.scrollOffset + i;
+        const setName = PIECE_SETS[idx];
+        const iy = listY + i * itemH;
+        const isSelected = idx === this.selectedIndex;
+        const isHover = idx === this.hoverIndex;
+        if (isSelected) {
+          ctx.fillStyle = "rgba(200, 168, 78, 0.12)";
+          ctx.fillRect(listX + 1, iy, listW - 2, itemH);
+        } else if (isHover) {
+          ctx.fillStyle = "rgba(200, 168, 78, 0.05)";
+          ctx.fillRect(listX + 1, iy, listW - 2, itemH);
+        }
+        if (PieceSetLoader.isLoaded(setName)) {
+          ctx.fillStyle = UI_COLORS.success;
+          ctx.beginPath();
+          ctx.arc(listX + 10, iy + itemH / 2, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.font = isSelected ? "bold 11px monospace" : "11px monospace";
+        ctx.fillStyle = isSelected ? UI_COLORS.accent : UI_COLORS.text;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(DISPLAY_NAMES[setName] || setName, listX + 18, iy + itemH / 2);
+      }
+      ctx.restore();
+      const maxScroll = Math.max(0, PIECE_SETS.length - maxVisible);
+      const arrowH = 20;
+      if (this.scrollOffset > 0) {
+        ctx.fillStyle = UI_COLORS.panel;
+        ctx.fillRect(listX, listY - arrowH - 2, listW, arrowH);
+        ctx.strokeStyle = UI_COLORS.panelBorder;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(listX, listY - arrowH - 2, listW, arrowH);
+        ctx.font = "bold 14px monospace";
+        ctx.fillStyle = UI_COLORS.accent;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("\u25B2", listX + listW / 2, listY - arrowH / 2 - 2);
+      }
+      if (this.scrollOffset < maxScroll) {
+        ctx.fillStyle = UI_COLORS.panel;
+        ctx.fillRect(listX, listY + listH + 2, listW, arrowH);
+        ctx.strokeStyle = UI_COLORS.panelBorder;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(listX, listY + listH + 2, listW, arrowH);
+        ctx.font = "bold 14px monospace";
+        ctx.fillStyle = UI_COLORS.accent;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("\u25BC", listX + listW / 2, listY + listH + arrowH / 2 + 2);
+      }
+      if (maxScroll > 0) {
+        const trackX = listX + listW - 5;
+        const trackW = 3;
+        ctx.fillStyle = "rgba(42, 37, 64, 0.5)";
+        ctx.fillRect(trackX, listY, trackW, listH);
+        const thumbH = Math.max(16, maxVisible / PIECE_SETS.length * listH);
+        const thumbY = listY + this.scrollOffset / maxScroll * (listH - thumbH);
+        ctx.fillStyle = UI_COLORS.accent;
+        ctx.fillRect(trackX, thumbY, trackW, thumbH);
+      }
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText("scroll to browse", listX + listW / 2, listY + listH + arrowH + 6);
+    }
+    renderPreview(ctx) {
+      const { previewX, previewY, previewW, previewH } = this.getPreviewBounds();
+      const setName = PIECE_SETS[this.selectedIndex];
+      UITheme.drawPanel(ctx, previewX, previewY, previewW, previewH, { radius: 6, shadow: false });
+      ctx.font = "bold 16px monospace";
+      ctx.fillStyle = UI_COLORS.accent;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(DISPLAY_NAMES[setName] || setName, previewX + previewW / 2, previewY + 12);
+      if (!PieceSetLoader.isLoaded(setName)) {
+        ctx.font = "11px monospace";
+        ctx.fillStyle = UI_COLORS.textDim;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Loading...", previewX + previewW / 2, previewY + previewH / 2);
+        return;
+      }
+      const pieceSize = Math.min(48, (previewW - 40) / 6);
+      const gap = 6;
+      const totalPiecesW = PREVIEW_TYPES.length * (pieceSize + gap) - gap;
+      const startX = previewX + (previewW - totalPiecesW) / 2;
+      const playerRowY = previewY + 50;
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("Player", previewX + previewW / 2, playerRowY - 4);
+      for (let i = 0; i < PREVIEW_TYPES.length; i++) {
+        const px = startX + i * (pieceSize + gap);
+        const piece = new Piece(PREVIEW_TYPES[i], TEAMS.PLAYER);
+        PieceRenderer.draw(ctx, piece, px, playerRowY, pieceSize);
+      }
+      const enemyRowY = playerRowY + pieceSize + 30;
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("Enemy", previewX + previewW / 2, enemyRowY - 4);
+      for (let i = 0; i < PREVIEW_TYPES.length; i++) {
+        const px = startX + i * (pieceSize + gap);
+        const piece = new Piece(PREVIEW_TYPES[i], TEAMS.ENEMY);
+        PieceRenderer.draw(ctx, piece, px, enemyRowY, pieceSize);
+      }
+      const boardSize = Math.min(previewW - 40, previewH - enemyRowY - pieceSize + previewY - 40);
+      if (boardSize > 60) {
+        const boardY = enemyRowY + pieceSize + 20;
+        const boardX = previewX + (previewW - boardSize) / 2;
+        const cellSize = boardSize / 4;
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            const isLight = (r + c) % 2 === 0;
+            ctx.fillStyle = isLight ? "rgba(240, 217, 181, 0.3)" : "rgba(181, 136, 99, 0.3)";
+            ctx.fillRect(boardX + c * cellSize, boardY + r * cellSize, cellSize, cellSize);
+          }
+        }
+        const miniPieces = [
+          { type: PIECE_TYPES.KING, team: TEAMS.PLAYER, c: 2, r: 3 },
+          { type: PIECE_TYPES.QUEEN, team: TEAMS.PLAYER, c: 1, r: 3 },
+          { type: PIECE_TYPES.PAWN, team: TEAMS.PLAYER, c: 1, r: 2 },
+          { type: PIECE_TYPES.PAWN, team: TEAMS.PLAYER, c: 2, r: 2 },
+          { type: PIECE_TYPES.KING, team: TEAMS.ENEMY, c: 1, r: 0 },
+          { type: PIECE_TYPES.ROOK, team: TEAMS.ENEMY, c: 3, r: 0 },
+          { type: PIECE_TYPES.PAWN, team: TEAMS.ENEMY, c: 0, r: 1 },
+          { type: PIECE_TYPES.KNIGHT, team: TEAMS.ENEMY, c: 2, r: 1 }
+        ];
+        for (const mp of miniPieces) {
+          const piece = new Piece(mp.type, mp.team);
+          PieceRenderer.draw(
+            ctx,
+            piece,
+            boardX + mp.c * cellSize + cellSize * 0.05,
+            boardY + mp.r * cellSize + cellSize * 0.05,
+            cellSize * 0.9
+          );
+        }
       }
     }
   };
@@ -6170,9 +8312,9 @@
       });
       this.eventBus.on("combatFinished", (data) => {
         if (data.victory) {
-          this.runManager.onBattleWon(data);
+          const rewards = this.runManager.onBattleWon(data);
           this.saveManager.save(this.runManager.serialize());
-          this.stateMachine.change("map");
+          this.stateMachine.change("map", { goldGained: data.goldEarned || 0 });
         } else {
           this.runManager.onBattleLost();
         }
@@ -6203,6 +8345,7 @@
   };
 
   // src/main.js
+  PieceSetLoader.init();
   var canvas = document.getElementById("game-canvas");
   var game = new Game(canvas);
   window.game = game;

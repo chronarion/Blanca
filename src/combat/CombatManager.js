@@ -64,11 +64,48 @@ export class CombatManager {
             : rawMoves;
     }
 
-    executeMove(piece, toCol, toRow) {
+    executeMove(piece, toCol, toRow, moveData = {}) {
         const fromCol = piece.col;
         const fromRow = piece.row;
         const target = this.board.getPieceAt(toCol, toRow);
         let captured = null;
+
+        // Handle castling
+        if (moveData.type === 'castle') {
+            const rook = this.board.getPieceAt(moveData.rookFromCol, piece.row);
+            if (rook) {
+                // Move king
+                const kingFrom = this.board.getTile(fromCol, fromRow);
+                const kingTo = this.board.getTile(toCol, toRow);
+                kingFrom.removePiece();
+                kingTo.setPiece(piece);
+                piece.hasMoved = true;
+                piece.moveCount++;
+
+                // Move rook
+                const rookFrom = this.board.getTile(moveData.rookFromCol, piece.row);
+                const rookTo = this.board.getTile(moveData.rookToCol, piece.row);
+                rookFrom.removePiece();
+                rookTo.setPiece(rook);
+                rook.hasMoved = true;
+                rook.moveCount++;
+
+                return {
+                    success: true,
+                    piece,
+                    from: { col: fromCol, row: fromRow },
+                    to: { col: toCol, row: toRow },
+                    captured: null,
+                    promoted: false,
+                    extraTurn: false,
+                    castle: {
+                        rook,
+                        rookFrom: { col: moveData.rookFromCol, row: piece.row },
+                        rookTo: { col: moveData.rookToCol, row: piece.row },
+                    },
+                };
+            }
+        }
 
         if (target && target.team !== piece.team) {
             if (!this.captureResolver.canCapture(piece, toCol, toRow)) {

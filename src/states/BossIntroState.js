@@ -2,6 +2,7 @@ import { UI_COLORS, TEAMS } from '../data/Constants.js';
 import { getBossForFloor } from '../data/BossData.js';
 import { Piece } from '../pieces/Piece.js';
 import { BossAI } from '../ai/BossAI.js';
+import { UITheme } from '../ui/UITheme.js';
 
 export class BossIntroState {
     constructor() {
@@ -71,52 +72,56 @@ export class BossIntroState {
 
         ctx.globalAlpha = alpha;
 
-        // Dark vignette
+        // Dark crimson vignette
         const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.6);
-        grad.addColorStop(0, 'rgba(20, 10, 30, 0.8)');
-        grad.addColorStop(1, 'rgba(10, 5, 15, 1)');
+        grad.addColorStop(0, 'rgba(40, 8, 12, 0.85)');
+        grad.addColorStop(1, 'rgba(9, 5, 6, 1)');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
 
-        // Boss name
-        ctx.font = 'bold 14px monospace';
+        // Chess pattern very faint
+        const pattern = ctx.createPattern(UITheme.getChessPattern(), 'repeat');
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = alpha;
+
+        // Floor label
+        ctx.font = 'bold 12px monospace';
         ctx.fillStyle = UI_COLORS.danger;
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.letterSpacing = '3px';
         ctx.fillText(`FLOOR ${this.floor} BOSS`, w / 2, h / 2 - 80);
+        ctx.letterSpacing = '0px';
 
-        ctx.font = 'bold 42px monospace';
-        ctx.fillStyle = UI_COLORS.accent;
+        // Boss name
+        ctx.save();
+        ctx.font = `bold 40px Georgia, 'Times New Roman', serif`;
+        ctx.shadowColor = 'rgba(192, 64, 80, 0.5)';
+        ctx.shadowBlur = 24;
+        ctx.fillStyle = UI_COLORS.danger;
         ctx.fillText(this.bossData.name, w / 2, h / 2 - 30);
+        ctx.restore();
 
-        ctx.font = 'italic 16px monospace';
+        // Title
+        ctx.font = 'italic 15px Georgia, serif';
         ctx.fillStyle = UI_COLORS.textDim;
         ctx.fillText(this.bossData.title, w / 2, h / 2 + 10);
 
-        ctx.font = '13px monospace';
-        ctx.fillStyle = UI_COLORS.text;
-        this.wrapText(ctx, this.bossData.description, w / 2, h / 2 + 50, 500, 18);
+        UITheme.drawDivider(ctx, w / 2 - 100, h / 2 + 30, 200);
 
-        ctx.font = '14px monospace';
+        // Description
+        ctx.font = '12px monospace';
+        ctx.fillStyle = UI_COLORS.text;
+        UITheme.wrapText(ctx, this.bossData.description, w / 2, h / 2 + 55, 450, 18);
+
+        // Continue prompt
+        ctx.font = '12px monospace';
         ctx.fillStyle = UI_COLORS.textDim;
-        ctx.fillText('Click to begin the fight', w / 2, h - 60);
+        ctx.globalAlpha = alpha * 0.6;
+        ctx.fillText('Click to begin the fight', w / 2, h - 55);
 
         ctx.globalAlpha = 1;
-    }
-
-    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-        const words = text.split(' ');
-        let line = '';
-        let lineNum = 0;
-        for (const word of words) {
-            const test = line + (line ? ' ' : '') + word;
-            if (ctx.measureText(test).width > maxWidth && line) {
-                ctx.fillText(line, x, y + lineNum * lineHeight);
-                line = word;
-                lineNum++;
-            } else {
-                line = test;
-            }
-        }
-        if (line) ctx.fillText(line, x, y + lineNum * lineHeight);
     }
 }
