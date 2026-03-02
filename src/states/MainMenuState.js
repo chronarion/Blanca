@@ -43,10 +43,7 @@ export class MainMenuState {
 
         this.buttons.push(new Button(x, startY, btnW, btnH, 'New Game', {
             onClick: () => {
-                if (this.runManager) {
-                    this.runManager.startRun('standard');
-                    this.stateMachine.change('map');
-                }
+                this.stateMachine.change('armySelect');
             },
         }));
 
@@ -75,10 +72,7 @@ export class MainMenuState {
         };
         this.keyHandler = (data) => {
             if (data.code === 'Enter') {
-                if (this.runManager) {
-                    this.runManager.startRun('standard');
-                    this.stateMachine.change('map');
-                }
+                this.stateMachine.change('armySelect');
             }
         };
         this.eventBus.on('click', this.clickHandler);

@@ -4,11 +4,9 @@ import { ARMIES } from '../data/ArmyData.js';
 import { SeededRNG } from '../util/SeededRNG.js';
 import { FloorGenerator } from './FloorGenerator.js';
 import { EncounterGenerator } from './EncounterGenerator.js';
-import { RecruitmentSystem } from './RecruitmentSystem.js';
 import { RelicSystem } from './RelicSystem.js';
-import { RewardTable } from './RewardTable.js';
-import { DifficultyScaler } from './DifficultyScaler.js';
 import { Shop } from './Shop.js';
+import { getRandomRelic } from '../data/RelicData.js';
 
 export class RunManager {
     constructor(eventBus) {
@@ -22,13 +20,11 @@ export class RunManager {
         this.currentNode = null;
         this.armyId = null;
         this.armyAbility = null;
+        this.difficulty = 'normal';
 
         this.relicSystem = new RelicSystem(eventBus);
-        this.recruitment = new RecruitmentSystem(eventBus);
-        this.difficultyScaler = new DifficultyScaler();
         this.floorGenerator = null;
         this.encounterGenerator = null;
-        this.rewardTable = null;
         this.shop = null;
 
         this.prisoners = {};
@@ -43,12 +39,12 @@ export class RunManager {
 
         this.floorGenerator = new FloorGenerator(this.rng);
         this.encounterGenerator = new EncounterGenerator(this.rng);
-        this.rewardTable = new RewardTable(this.rng);
         this.shop = new Shop(this.rng, this.eventBus);
 
         this.armyId = armyId;
         const army = ARMIES[armyId];
         this.armyAbility = army.ability;
+        this.difficulty = 'normal';
 
         // Create roster from army
         this.roster = army.pieces.map(p => new Piece(p.type, TEAMS.PLAYER));
@@ -60,9 +56,6 @@ export class RunManager {
         this.prisoners = {};
         this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
 
-        // Apply army-specific starting relics
-        this.applyArmyAbility(army);
-
         // Generate map
         this.map = this.floorGenerator.generateMap(TOTAL_FLOORS);
         this.isActive = true;
@@ -70,41 +63,41 @@ export class RunManager {
         this.eventBus.emit('runStarted', { army, seed: this.seed });
     }
 
-    applyArmyAbility(army) {
-        if (!army.ability) return;
-        switch (army.ability) {
-            case 'earlyPromotion':
-                // Handled via armyAbility field in CombatManager
-                break;
-            case 'knightDoubleCapture':
-                for (const p of this.roster) {
-                    if (p.type === PIECE_TYPES.KNIGHT) {
-                        p.addModifier({ id: 'knightDoubleCapture', type: 'capture', name: 'Double Move on Capture' });
-                    }
-                }
-                break;
-            case 'bishopPhase':
-                for (const p of this.roster) {
-                    if (p.type === PIECE_TYPES.BISHOP) {
-                        p.addModifier({ id: 'bishopLeap', type: 'movement', name: 'Phase Through' });
-                    }
-                }
-                break;
-            case 'rookShield':
-                for (const p of this.roster) {
-                    if (p.type === PIECE_TYPES.ROOK) {
-                        p.addModifier({ id: 'firstTurnProtection', type: 'protection', name: 'Opening Guard' });
-                    }
-                }
-                break;
-            case 'queenSplit':
-                for (const p of this.roster) {
-                    if (p.type === PIECE_TYPES.QUEEN) {
-                        p.addModifier({ id: 'queenSplit', type: 'unique', name: 'Queen Split' });
-                    }
-                }
-                break;
+    startRunFromDraft(difficulty, pieceTypes, seed = null) {
+        this.seed = seed || SeededRNG.generateSeed();
+        this.rng = new SeededRNG(this.seed);
+
+        this.floorGenerator = new FloorGenerator(this.rng);
+        this.encounterGenerator = new EncounterGenerator(this.rng);
+        this.shop = new Shop(this.rng, this.eventBus);
+
+        this.armyId = 'draft';
+        this.armyAbility = null;
+        this.difficulty = difficulty;
+
+        // Create roster from drafted piece types (king is always included)
+        this.roster = [];
+        // Always add king
+        this.roster.push(new Piece(PIECE_TYPES.KING, TEAMS.PLAYER));
+        for (const type of pieceTypes) {
+            if (type !== PIECE_TYPES.KING) {
+                this.roster.push(new Piece(type, TEAMS.PLAYER));
+            }
         }
+
+        this.gold = STARTING_GOLD;
+        this.currentFloor = 1;
+        this.currentNode = null;
+
+        this.relicSystem = new RelicSystem(this.eventBus);
+        this.prisoners = {};
+        this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
+
+        // Generate map
+        this.map = this.floorGenerator.generateMap(TOTAL_FLOORS);
+        this.isActive = true;
+
+        this.eventBus.emit('runStarted', { armyId: 'draft', difficulty, seed: this.seed });
     }
 
     getCurrentFloorData() {
@@ -112,7 +105,7 @@ export class RunManager {
     }
 
     getEncounter(nodeType) {
-        const difficulty = this.difficultyScaler.getAIDifficulty(this.currentFloor);
+        const difficulty = Math.min(5, Math.ceil(this.currentFloor / 2));
         switch (nodeType) {
             case 'battle':
                 return this.encounterGenerator.generateBattle(this.currentFloor, difficulty);
@@ -146,8 +139,9 @@ export class RunManager {
 
     onBattleWon(result) {
         this.stats.battlesWon++;
-        const mult = this.difficultyScaler.getGoldMultiplier(this.currentFloor, this.relicSystem.ownedRelics);
-        const gold = Math.floor((result.goldEarned || 10) * mult);
+        let goldMult = 1 + (this.currentFloor - 1) * 0.1;
+        if (this.relicSystem.ownedRelics.some(r => r.id === 'goldBonus')) goldMult *= 1.5;
+        const gold = Math.floor((result.goldEarned || 10) * goldMult);
         this.gold += gold;
 
         // Remove captured pieces from roster
@@ -178,7 +172,33 @@ export class RunManager {
             }
         }
 
-        return this.rewardTable.getBattleRewards(this.currentFloor, result.isElite);
+        return this._getBattleRewards(this.currentFloor, result.isElite);
+    }
+
+    _getBattleRewards(floor, isElite) {
+        const rewards = { gold: 0, relic: null, recruitOptions: [] };
+
+        const base = 8 + floor * 3;
+        const range = 5 + floor;
+        rewards.gold = base + this.rng.randomInt(0, range);
+        if (isElite) rewards.gold = Math.floor(rewards.gold * 1.5);
+
+        // Elites can award relics (modifiers now come from upgrade packs)
+        if (isElite) {
+            rewards.relic = getRandomRelic([], this.rng);
+        }
+
+        // Always offer a free pawn recruit
+        rewards.recruitOptions = [{ type: PIECE_TYPES.PAWN, cost: 0 }];
+        // From floor 2+, chance for a free officer recruit
+        if (floor >= 2 && this.rng.random() < 0.4 + floor * 0.05) {
+            rewards.recruitOptions.push({
+                type: this.rng.randomChoice([PIECE_TYPES.KNIGHT, PIECE_TYPES.BISHOP]),
+                cost: 0,
+            });
+        }
+
+        return rewards;
     }
 
     onBattleLost() {
@@ -200,21 +220,6 @@ export class RunManager {
     recruitPiece(type) {
         if (this.roster.length >= ROSTER_LIMIT) return null;
         const piece = new Piece(type, TEAMS.PLAYER);
-
-        // Apply army ability modifier to newly recruited pieces
-        if (this.armyAbility === 'knightDoubleCapture' && type === PIECE_TYPES.KNIGHT) {
-            piece.addModifier({ id: 'knightDoubleCapture', type: 'capture', name: 'Double Move on Capture' });
-        }
-        if (this.armyAbility === 'rookShield' && type === PIECE_TYPES.ROOK) {
-            piece.addModifier({ id: 'firstTurnProtection', type: 'protection', name: 'Opening Guard' });
-        }
-        if (this.armyAbility === 'bishopPhase' && type === PIECE_TYPES.BISHOP) {
-            piece.addModifier({ id: 'bishopLeap', type: 'movement', name: 'Phase Through' });
-        }
-        if (this.armyAbility === 'queenSplit' && type === PIECE_TYPES.QUEEN) {
-            piece.addModifier({ id: 'queenSplit', type: 'unique', name: 'Queen Split' });
-        }
-
         this.roster.push(piece);
         this.stats.piecesRecruited++;
         this.eventBus.emit('pieceRecruited', { piece });
@@ -275,6 +280,7 @@ export class RunManager {
         return {
             seed: this.seed,
             armyId: this.armyId,
+            difficulty: this.difficulty,
             roster: this.roster.map(p => p.serialize()),
             gold: this.gold,
             currentFloor: this.currentFloor,
@@ -291,11 +297,11 @@ export class RunManager {
         // Fast-forward RNG to current state by regenerating the map
         this.floorGenerator = new FloorGenerator(this.rng);
         this.encounterGenerator = new EncounterGenerator(this.rng);
-        this.rewardTable = new RewardTable(this.rng);
         this.shop = new Shop(this.rng, this.eventBus);
 
         this.armyId = data.armyId;
-        this.armyAbility = ARMIES[data.armyId]?.ability || null;
+        this.difficulty = data.difficulty || 'normal';
+        this.armyAbility = data.armyId === 'draft' ? null : (ARMIES[data.armyId]?.ability || null);
         this.roster = data.roster.map(p => Piece.deserialize(p));
         this.gold = data.gold;
         this.currentFloor = data.currentFloor;

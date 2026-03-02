@@ -1,6 +1,6 @@
 import { PIECE_TYPES } from '../data/Constants.js';
 import { SHOP_PRICES } from '../data/PieceData.js';
-import { MODIFIERS, getModifiersForPiece, getRandomModifier } from '../data/ModifierData.js';
+import { getRandomModifier } from '../data/ModifierData.js';
 import { getRandomRelic } from '../data/RelicData.js';
 
 export class Shop {
@@ -33,15 +33,13 @@ export class Shop {
         for (let i = 0; i < modCount; i++) {
             const mod = getRandomModifier(this.rng);
             if (mod && !this.items.some(it => it.id === mod.id)) {
-                // Skip modifier if relic already covers it
-                if (mod.id === 'pawnForwardCapture' && ownedRelicIds.includes('pawnForwardCapture')) continue;
                 this.items.push({
                     category: 'modifier',
                     id: mod.id,
                     price: mod.shopPrice,
                     name: mod.name,
                     description: mod.description,
-                    validPieces: mod.validPieces,
+                    rarity: mod.rarity,
                     modifier: mod,
                 });
             }

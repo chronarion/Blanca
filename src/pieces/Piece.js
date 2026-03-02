@@ -35,10 +35,6 @@ export class Piece {
     promote(newType) {
         this.promotedFrom = this.type;
         this.type = newType;
-        // Strip modifiers not valid for the new type (army ability modifiers lack validPieces and are preserved)
-        this.modifiers = this.modifiers.filter(m =>
-            !m.validPieces || m.validPieces.includes(newType)
-        );
     }
 
     clone() {

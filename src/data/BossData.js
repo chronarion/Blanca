@@ -14,12 +14,8 @@ export const BOSSES = {
                     { type: PIECE_TYPES.KING, col: 4, row: 0 },
                     { type: PIECE_TYPES.BISHOP, col: 2, row: 0 },
                     { type: PIECE_TYPES.BISHOP, col: 5, row: 0 },
-                    { type: PIECE_TYPES.BISHOP, col: 3, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 1, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 2, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 4, row: 1 },
+                    { type: PIECE_TYPES.PAWN, col: 3, row: 1 },
                     { type: PIECE_TYPES.PAWN, col: 5, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 6, row: 1 },
                 ],
                 terrain: [
                     { col: 0, row: 3, terrain: TERRAIN_TYPES.VOID },
@@ -39,7 +35,7 @@ export const BOSSES = {
                     { col: 6, row: 4, terrain: TERRAIN_TYPES.BRAMBLE },
                 ],
                 triggerCondition: 'piecesRemaining',
-                triggerValue: 5,
+                triggerValue: 3,
             },
         ],
         goldReward: 40,
@@ -58,19 +54,13 @@ export const BOSSES = {
                     { type: PIECE_TYPES.KING, col: 5, row: 0 },
                     { type: PIECE_TYPES.QUEEN, col: 4, row: 0 },
                     { type: PIECE_TYPES.ROOK, col: 1, row: 0 },
-                    { type: PIECE_TYPES.ROOK, col: 8, row: 0 },
                     { type: PIECE_TYPES.BISHOP, col: 3, row: 0 },
                     { type: PIECE_TYPES.BISHOP, col: 6, row: 0 },
                     { type: PIECE_TYPES.KNIGHT, col: 2, row: 0 },
                     { type: PIECE_TYPES.KNIGHT, col: 7, row: 0 },
-                    { type: PIECE_TYPES.PAWN, col: 1, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 2, row: 1 },
                     { type: PIECE_TYPES.PAWN, col: 3, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 4, row: 1 },
                     { type: PIECE_TYPES.PAWN, col: 5, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 6, row: 1 },
                     { type: PIECE_TYPES.PAWN, col: 7, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 8, row: 1 },
                 ],
                 terrain: [
                     { col: 0, row: 4, terrain: TERRAIN_TYPES.VOID },
@@ -84,10 +74,8 @@ export const BOSSES = {
             {
                 name: 'Phase 2: Reinforcements',
                 addPieces: [
-                    { type: PIECE_TYPES.KNIGHT, col: 0, row: 0 },
-                    { type: PIECE_TYPES.KNIGHT, col: 9, row: 0 },
+                    { type: PIECE_TYPES.ROOK, col: 8, row: 0 },
                     { type: PIECE_TYPES.PAWN, col: 0, row: 1 },
-                    { type: PIECE_TYPES.PAWN, col: 9, row: 1 },
                 ],
                 addTerrain: [
                     { col: 2, row: 5, terrain: TERRAIN_TYPES.ICE },
@@ -103,7 +91,7 @@ export const BOSSES = {
             {
                 name: 'Phase 3: Last Stand',
                 addPieces: [
-                    { type: PIECE_TYPES.QUEEN, col: 4, row: 1 },
+                    { type: PIECE_TYPES.KNIGHT, col: 4, row: 1 },
                 ],
                 addTerrain: [
                     { col: 3, row: 3, terrain: TERRAIN_TYPES.BRAMBLE },

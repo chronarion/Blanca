@@ -1,4 +1,5 @@
 import { UI_COLORS, PIECE_TYPES, TEAMS } from '../data/Constants.js';
+import { RARITY_COLORS } from '../data/ModifierData.js';
 import { Piece } from '../pieces/Piece.js';
 import { PieceRenderer } from '../render/PieceRenderer.js';
 import { UITheme } from '../ui/UITheme.js';
@@ -28,6 +29,8 @@ export class ShopState {
         this.hoverIndex = -1;
         this.message = '';
         this.messageTimer = 0;
+        this.pendingModifier = null;
+        this.validPieces = [];
         this.bindInput();
     }
 
@@ -110,7 +113,12 @@ export class ShopState {
 
     handleKey(data) {
         if (data.code === 'Escape') {
-            this.stateMachine.change('map');
+            if (this.pendingModifier) {
+                this.pendingModifier = null;
+                this.validPieces = [];
+            } else {
+                this.stateMachine.change('map');
+            }
         }
     }
 
@@ -121,11 +129,10 @@ export class ShopState {
         }
 
         if (item.category === 'modifier') {
-            const valid = this.runManager.roster.filter(p =>
-                item.validPieces && item.validPieces.includes(p.type) && !p.hasModifier(item.id)
-            );
+            // Any piece can receive any modifier, but not duplicates
+            const valid = this.runManager.roster.filter(p => !p.hasModifier(item.id));
             if (valid.length === 0) {
-                this.showMessage('No valid pieces for this modifier!');
+                this.showMessage('All pieces already have this modifier!');
                 return;
             }
             const success = this.runManager.purchaseShopItem(item);
@@ -197,9 +204,10 @@ export class ShopState {
                 fill: isHover ? '#1a1a28' : UI_COLORS.panel,
             });
 
-            // Category color bar
+            // Category color bar — use rarity color for modifiers
             const catColor = item.category === 'relic' ? UI_COLORS.gold :
-                             item.category === 'modifier' ? UI_COLORS.info : UI_COLORS.textDim;
+                             item.category === 'modifier' ? (RARITY_COLORS[item.rarity] || UI_COLORS.info) :
+                             UI_COLORS.textDim;
             ctx.beginPath();
             UITheme.roundRect(ctx, b.x + 1, b.y + 1, b.w - 2, 2, 1);
             ctx.fillStyle = catColor;
@@ -219,9 +227,9 @@ export class ShopState {
                 ctx.fillText(item.category === 'relic' ? '\u2605' : '\u25C6', b.x + b.w / 2, b.y + 36);
             }
 
-            // Name
+            // Name — rarity-colored for modifiers
             ctx.font = 'bold 11px monospace';
-            ctx.fillStyle = UI_COLORS.text;
+            ctx.fillStyle = item.category === 'modifier' ? (RARITY_COLORS[item.rarity] || UI_COLORS.text) : UI_COLORS.text;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(item.name, b.x + b.w / 2, b.y + 68);

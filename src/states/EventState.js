@@ -152,13 +152,13 @@ export class EventState {
             case 'randomModifier': {
                 const mod = getRandomModifier(rng);
                 if (mod) {
-                    const validPieces = rm.roster.filter(p => mod.validPieces.includes(p.type));
+                    const validPieces = rm.roster.filter(p => !p.hasModifier(mod.id));
                     if (validPieces.length > 0) {
                         const target = rng.randomChoice(validPieces);
                         target.addModifier({ ...mod });
                         this.result = `Found ${mod.name} for your ${target.type}!`;
                     } else {
-                        this.result = `Found ${mod.name}, but no valid pieces to apply it to.`;
+                        this.result = `Found ${mod.name}, but all pieces already have it.`;
                     }
                 }
                 break;
@@ -193,12 +193,12 @@ export class EventState {
             case 'trainModifier': {
                 const mod = getRandomModifier(rng);
                 if (mod) {
-                    const valid = rm.roster.filter(p => mod.validPieces.includes(p.type));
+                    const valid = rm.roster.filter(p => !p.hasModifier(mod.id));
                     if (valid.length > 0) {
                         rng.randomChoice(valid).addModifier({ ...mod });
                         this.result = `Training complete! Gained ${mod.name}.`;
                     } else {
-                        this.result = 'No valid pieces to train.';
+                        this.result = 'All pieces already have this modifier.';
                     }
                 }
                 break;

@@ -560,9 +560,6 @@
     promote(newType) {
       this.promotedFrom = this.type;
       this.type = newType;
-      this.modifiers = this.modifiers.filter(
-        (m) => !m.validPieces || m.validPieces.includes(newType)
-      );
     }
     clone() {
       const copy = new _Piece(this.type, this.team, this.col, this.row);
@@ -664,6 +661,8 @@
   var ROSTER_LIMIT = 16;
   var TOTAL_FLOORS = 10;
   var STARTING_GOLD = 0;
+  var DRAFT_POINTS = { easy: 20, normal: 14, hard: 8 };
+  var DRAFT_COSTS = { pawn: 1, knight: 2, bishop: 2, rook: 3, queen: 5 };
 
   // src/data/ArmyData.js
   var ARMIES = {
@@ -693,9 +692,6 @@
       color: "#c9a84e"
     }
   };
-  function getArmyList() {
-    return Object.values(ARMIES);
-  }
 
   // src/util/SeededRNG.js
   var SeededRNG = class {
@@ -892,8 +888,6 @@
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
       ],
@@ -908,8 +902,6 @@
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -926,8 +918,6 @@
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -946,8 +936,6 @@
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
-        { type: PIECE_TYPES.PAWN },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
       ],
       goldReward: 20
@@ -962,8 +950,6 @@
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.QUEEN },
         { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -980,8 +966,6 @@
         { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -998,11 +982,8 @@
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.QUEEN },
         { type: PIECE_TYPES.ROOK },
-        { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
@@ -1017,12 +998,10 @@
       boardSize: { cols: 8, rows: 8 },
       pieces: [
         { type: PIECE_TYPES.KING },
-        { type: PIECE_TYPES.QUEEN },
         { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -1041,8 +1020,6 @@
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.KNIGHT },
         { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
       ],
@@ -1059,9 +1036,6 @@
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.BISHOP },
-        { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -1078,10 +1052,8 @@
         { type: PIECE_TYPES.KING },
         { type: PIECE_TYPES.QUEEN },
         { type: PIECE_TYPES.ROOK },
-        { type: PIECE_TYPES.ROOK },
         { type: PIECE_TYPES.BISHOP },
         { type: PIECE_TYPES.KNIGHT },
-        { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN },
         { type: PIECE_TYPES.PAWN }
@@ -1305,54 +1277,6 @@
     }
   };
 
-  // src/progression/RecruitmentSystem.js
-  var RecruitmentSystem = class {
-    constructor(eventBus) {
-      this.eventBus = eventBus;
-    }
-    canRecruit(roster) {
-      return roster.length < ROSTER_LIMIT;
-    }
-    recruitPiece(roster, type) {
-      if (!this.canRecruit(roster)) return null;
-      const piece = new Piece(type, TEAMS.PLAYER);
-      roster.push(piece);
-      this.eventBus.emit("pieceRecruited", { piece });
-      return piece;
-    }
-    removePiece(roster, pieceId) {
-      const idx = roster.findIndex((p) => p.id === pieceId);
-      if (idx === -1) return null;
-      const removed = roster.splice(idx, 1)[0];
-      this.eventBus.emit("pieceRemoved", { piece: removed });
-      return removed;
-    }
-    getDeployablePieces(roster, maxDeploy) {
-      const king = roster.find((p) => p.type === PIECE_TYPES.KING);
-      const others = roster.filter((p) => p.type !== PIECE_TYPES.KING);
-      const sorted = others.sort((a, b) => this.pieceValue(b) - this.pieceValue(a));
-      const deployed = king ? [king] : [];
-      for (const p of sorted) {
-        if (deployed.length >= maxDeploy) break;
-        deployed.push(p);
-      }
-      return deployed;
-    }
-    pieceValue(piece) {
-      const values = {
-        [PIECE_TYPES.QUEEN]: 9,
-        [PIECE_TYPES.ROOK]: 5,
-        [PIECE_TYPES.BISHOP]: 3,
-        [PIECE_TYPES.KNIGHT]: 3,
-        [PIECE_TYPES.PAWN]: 1,
-        [PIECE_TYPES.KING]: 100
-      };
-      let val = values[piece.type] || 0;
-      val += piece.modifiers.length * 2;
-      return val;
-    }
-  };
-
   // src/data/RelicData.js
   var RELICS = {
     freeMove: {
@@ -1475,196 +1399,6 @@
     }
   };
 
-  // src/data/ModifierData.js
-  var MODIFIER_TYPES = {
-    MOVEMENT: "movement",
-    CAPTURE: "capture",
-    PROTECTION: "protection",
-    UNIQUE: "unique"
-  };
-  var MODIFIERS = {
-    // Movement modifiers
-    knightKingMove: {
-      id: "knightKingMove",
-      name: "Royal Step",
-      description: "This knight can also move like a king (one square any direction)",
-      type: MODIFIER_TYPES.MOVEMENT,
-      rarity: "uncommon",
-      validPieces: ["knight"],
-      shopPrice: 12
-    },
-    rookExtraRange: {
-      id: "rookExtraRange",
-      name: "Extended Reach",
-      description: "This rook moves up to 2 extra squares",
-      type: MODIFIER_TYPES.MOVEMENT,
-      rarity: "common",
-      validPieces: ["rook"],
-      shopPrice: 10
-    },
-    pawnDiagonalMove: {
-      id: "pawnDiagonalMove",
-      name: "Sidestep",
-      description: "This pawn can move one square diagonally forward without capturing",
-      type: MODIFIER_TYPES.MOVEMENT,
-      rarity: "common",
-      validPieces: ["pawn"],
-      shopPrice: 6
-    },
-    bishopLeap: {
-      id: "bishopLeap",
-      name: "Holy Leap",
-      description: "This bishop can jump over one piece in its path",
-      type: MODIFIER_TYPES.MOVEMENT,
-      rarity: "rare",
-      validPieces: ["bishop"],
-      shopPrice: 15
-    },
-    // Capture modifiers
-    bishopDoubleCapture: {
-      id: "bishopDoubleCapture",
-      name: "Zealous Pursuit",
-      description: "After capturing, this bishop can move again",
-      type: MODIFIER_TYPES.CAPTURE,
-      rarity: "rare",
-      validPieces: ["bishop"],
-      shopPrice: 18
-    },
-    knightRangedCapture: {
-      id: "knightRangedCapture",
-      name: "Lance Strike",
-      description: "This knight can capture without moving to the target square",
-      type: MODIFIER_TYPES.CAPTURE,
-      rarity: "legendary",
-      validPieces: ["knight"],
-      shopPrice: 25
-    },
-    pawnForwardCapture: {
-      id: "pawnForwardCapture",
-      name: "Pike",
-      description: "This pawn can capture forward",
-      type: MODIFIER_TYPES.CAPTURE,
-      rarity: "common",
-      validPieces: ["pawn"],
-      shopPrice: 8
-    },
-    // Protection modifiers
-    sideProtection: {
-      id: "sideProtection",
-      name: "Flanking Shield",
-      description: "This rook can't be captured from the side",
-      type: MODIFIER_TYPES.PROTECTION,
-      rarity: "uncommon",
-      validPieces: ["rook"],
-      shopPrice: 14
-    },
-    firstTurnProtection: {
-      id: "firstTurnProtection",
-      name: "Opening Guard",
-      description: "This pawn can't be captured on its first turn",
-      type: MODIFIER_TYPES.PROTECTION,
-      rarity: "common",
-      validPieces: ["pawn"],
-      shopPrice: 5
-    },
-    // Unique modifiers
-    queenTrail: {
-      id: "queenTrail",
-      name: "Scorched Path",
-      description: "This queen leaves a blocked square behind when it moves",
-      type: MODIFIER_TYPES.UNIQUE,
-      rarity: "legendary",
-      validPieces: ["queen"],
-      shopPrice: 20
-    },
-    kingInspire: {
-      id: "kingInspire",
-      name: "Royal Inspiration",
-      description: "Friendly pieces adjacent to this king gain +1 move range",
-      type: MODIFIER_TYPES.UNIQUE,
-      rarity: "rare",
-      validPieces: ["king"],
-      shopPrice: 16
-    }
-  };
-  function getRandomModifier(rng = Math) {
-    const all = Object.values(MODIFIERS);
-    return all[Math.floor(rng.random() * all.length)];
-  }
-
-  // src/progression/RewardTable.js
-  var RewardTable = class {
-    constructor(rng) {
-      this.rng = rng;
-    }
-    getBattleRewards(floor, isElite) {
-      const rewards = { gold: 0, modifier: null, relic: null, recruitOptions: [] };
-      rewards.gold = this.rollGold(floor, isElite);
-      if (isElite) {
-        if (this.rng.random() > 0.5) {
-          rewards.modifier = getRandomModifier(this.rng);
-        } else {
-          rewards.relic = getRandomRelic([], this.rng);
-        }
-      } else {
-        if (this.rng.random() < 0.3) {
-          rewards.modifier = getRandomModifier(this.rng);
-        }
-      }
-      rewards.recruitOptions = this.getRecruitOptions(floor);
-      return rewards;
-    }
-    rollGold(floor, isElite) {
-      const base = 5 + floor * 3;
-      const range = 4 + floor;
-      let gold = base + this.rng.randomInt(0, range);
-      if (isElite) gold = Math.floor(gold * 1.5);
-      return gold;
-    }
-    getRecruitOptions(floor) {
-      const options = [{ type: PIECE_TYPES.PAWN, cost: 0 }];
-      if (floor >= 3 && this.rng.random() < 0.5) {
-        options.push({ type: this.rng.randomChoice([PIECE_TYPES.KNIGHT, PIECE_TYPES.BISHOP]), cost: 0 });
-      }
-      return options;
-    }
-    getBossRewards(floor) {
-      return {
-        gold: 20 + floor * 5,
-        relic: getRandomRelic([], this.rng),
-        modifier: getRandomModifier(this.rng),
-        recruitOptions: [
-          { type: PIECE_TYPES.PAWN, cost: 0 },
-          { type: this.rng.randomChoice([PIECE_TYPES.KNIGHT, PIECE_TYPES.BISHOP, PIECE_TYPES.ROOK]), cost: 0 }
-        ]
-      };
-    }
-  };
-
-  // src/progression/DifficultyScaler.js
-  var DifficultyScaler = class {
-    constructor() {
-      this.baseAIDifficulty = 1;
-    }
-    getAIDifficulty(floor) {
-      if (floor <= 2) return 1;
-      if (floor <= 4) return 2;
-      if (floor <= 6) return 3;
-      if (floor <= 8) return 4;
-      return 5;
-    }
-    getGoldMultiplier(floor, relics) {
-      let mult = 1 + (floor - 1) * 0.1;
-      if (relics.some((r) => r.id === "goldBonus")) {
-        mult *= 1.5;
-      }
-      return mult;
-    }
-    getEliteRewardBonus(floor) {
-      return Math.floor(floor * 1.5);
-    }
-  };
-
   // src/data/PieceData.js
   var PIECE_VALUES = {
     [PIECE_TYPES.PAWN]: 1,
@@ -1698,6 +1432,354 @@
     [PIECE_TYPES.QUEEN]: 35
   };
 
+  // src/data/ModifierData.js
+  var MODIFIER_TYPES = {
+    MOVEMENT: "movement",
+    CAPTURE: "capture",
+    DEFENSE: "defense",
+    AURA: "aura",
+    RISK: "risk"
+  };
+  var RARITY_COLORS = {
+    common: "#8a8a8a",
+    uncommon: "#4a9e5a",
+    rare: "#5880b8",
+    legendary: "#c9a84e"
+  };
+  var MODIFIERS = {
+    // === MOVEMENT (8) ===
+    leapOver: {
+      id: "leapOver",
+      name: "Leap Over",
+      description: "Sliding pieces can jump over one blocking piece in their path",
+      shortDescription: "Jump over 1 blocker",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "rare",
+      shopPrice: 15,
+      redundantFor: []
+    },
+    extraRange: {
+      id: "extraRange",
+      name: "Extended Reach",
+      description: "Sliding moves extend 2 extra squares in each direction",
+      shortDescription: "+2 slide range",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "common",
+      shopPrice: 8,
+      redundantFor: ["queen", "rook", "bishop"]
+    },
+    kingStep: {
+      id: "kingStep",
+      name: "Royal Step",
+      description: "Can also move one square in any direction, like a king",
+      shortDescription: "+king moves",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "uncommon",
+      shopPrice: 12,
+      redundantFor: ["queen", "king"]
+    },
+    sidestep: {
+      id: "sidestep",
+      name: "Sidestep",
+      description: "Can move one square left or right along the same row",
+      shortDescription: "+1 left/right",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "common",
+      shopPrice: 6,
+      redundantFor: ["queen", "rook", "king"]
+    },
+    retreat: {
+      id: "retreat",
+      name: "Retreat",
+      description: "Can move one square directly backward",
+      shortDescription: "+1 backward",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "common",
+      shopPrice: 6,
+      redundantFor: ["queen", "rook", "king"]
+    },
+    diagonalSlip: {
+      id: "diagonalSlip",
+      name: "Diagonal Slip",
+      description: "Can move one square diagonally in any direction",
+      shortDescription: "+diagonal step",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "common",
+      shopPrice: 7,
+      redundantFor: ["queen", "bishop", "king"]
+    },
+    charge: {
+      id: "charge",
+      name: "Charge",
+      description: "On first move of battle, sliding range extends by 3 extra squares",
+      shortDescription: "+3 range on first move",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "uncommon",
+      shopPrice: 10,
+      redundantFor: ["queen", "rook", "bishop"]
+    },
+    phasing: {
+      id: "phasing",
+      name: "Phasing",
+      description: "Slides pass through blocking pieces as if they were not there",
+      shortDescription: "Ignore blockers",
+      category: MODIFIER_TYPES.MOVEMENT,
+      rarity: "legendary",
+      shopPrice: 22,
+      redundantFor: []
+    },
+    // === CAPTURE (4) ===
+    forwardCapture: {
+      id: "forwardCapture",
+      name: "Pike",
+      description: "Can capture one square directly forward",
+      shortDescription: "+forward capture",
+      category: MODIFIER_TYPES.CAPTURE,
+      rarity: "common",
+      shopPrice: 8,
+      redundantFor: ["queen", "rook"]
+    },
+    doubleCapture: {
+      id: "doubleCapture",
+      name: "Zealous Pursuit",
+      description: "After capturing, this piece can move again",
+      shortDescription: "Extra move on capture",
+      category: MODIFIER_TYPES.CAPTURE,
+      rarity: "rare",
+      shopPrice: 18,
+      redundantFor: []
+    },
+    captureChain: {
+      id: "captureChain",
+      name: "Chain Strike",
+      description: "After capturing, if another capture is immediately available, move again",
+      shortDescription: "Chain captures",
+      category: MODIFIER_TYPES.CAPTURE,
+      rarity: "uncommon",
+      shopPrice: 14,
+      redundantFor: []
+    },
+    captureRetreat: {
+      id: "captureRetreat",
+      name: "Hit and Run",
+      description: "After capturing, return to starting square",
+      shortDescription: "Return after capture",
+      category: MODIFIER_TYPES.CAPTURE,
+      rarity: "uncommon",
+      shopPrice: 12,
+      redundantFor: []
+    },
+    // === DEFENSE (7) ===
+    firstTurnShield: {
+      id: "firstTurnShield",
+      name: "Opening Guard",
+      description: "Cannot be captured during the first 2 turns of battle",
+      shortDescription: "Immune turns 1-2",
+      category: MODIFIER_TYPES.DEFENSE,
+      rarity: "common",
+      shopPrice: 5,
+      redundantFor: []
+    },
+    flankShield: {
+      id: "flankShield",
+      name: "Flanking Shield",
+      description: "Cannot be captured from the side (same row)",
+      shortDescription: "Side-immune",
+      category: MODIFIER_TYPES.DEFENSE,
+      rarity: "uncommon",
+      shopPrice: 14,
+      redundantFor: []
+    },
+    rearShield: {
+      id: "rearShield",
+      name: "Rear Guard",
+      description: "Cannot be captured from behind",
+      shortDescription: "Back-immune",
+      category: MODIFIER_TYPES.DEFENSE,
+      rarity: "uncommon",
+      shopPrice: 12,
+      redundantFor: []
+    },
+    adjacencyShield: {
+      id: "adjacencyShield",
+      name: "Formation Guard",
+      description: "Cannot be captured while adjacent to a friendly piece",
+      shortDescription: "Immune near allies",
+      category: MODIFIER_TYPES.DEFENSE,
+      rarity: "rare",
+      shopPrice: 16,
+      redundantFor: []
+    },
+    lastStand: {
+      id: "lastStand",
+      name: "Last Stand",
+      description: "When this is the last non-king piece, immune for 3 turns",
+      shortDescription: "Immune as last piece",
+      category: MODIFIER_TYPES.DEFENSE,
+      rarity: "rare",
+      shopPrice: 14,
+      redundantFor: []
+    },
+    anchored: {
+      id: "anchored",
+      name: "Anchored",
+      description: "Cannot be captured, but limited to 2 squares of movement",
+      shortDescription: "Immovable fortress",
+      category: MODIFIER_TYPES.DEFENSE,
+      rarity: "legendary",
+      shopPrice: 20,
+      redundantFor: []
+    },
+    gamblersFate: {
+      id: "gamblersFate",
+      name: "Gambler's Fate",
+      description: "50% chance to survive being captured",
+      shortDescription: "50% dodge capture",
+      category: MODIFIER_TYPES.DEFENSE,
+      rarity: "rare",
+      shopPrice: 16,
+      redundantFor: []
+    },
+    // === AURA (5) ===
+    inspire: {
+      id: "inspire",
+      name: "Inspire",
+      description: "Adjacent friendly pieces gain +1 sliding range",
+      shortDescription: "Allies +1 range",
+      category: MODIFIER_TYPES.AURA,
+      rarity: "rare",
+      shopPrice: 16,
+      redundantFor: []
+    },
+    intimidate: {
+      id: "intimidate",
+      name: "Intimidate",
+      description: "Adjacent enemy pieces lose 1 sliding range (minimum 1)",
+      shortDescription: "Enemies -1 range",
+      category: MODIFIER_TYPES.AURA,
+      rarity: "uncommon",
+      shopPrice: 12,
+      redundantFor: []
+    },
+    guardian: {
+      id: "guardian",
+      name: "Guardian",
+      description: "Adjacent friendly pieces can't be captured from this piece's direction",
+      shortDescription: "Shield allies from side",
+      category: MODIFIER_TYPES.AURA,
+      rarity: "rare",
+      shopPrice: 16,
+      redundantFor: []
+    },
+    decoy: {
+      id: "decoy",
+      name: "Decoy",
+      description: "Enemy AI prioritizes capturing this piece over others",
+      shortDescription: "Draws enemy fire",
+      category: MODIFIER_TYPES.AURA,
+      rarity: "uncommon",
+      shopPrice: 10,
+      redundantFor: []
+    },
+    rally: {
+      id: "rally",
+      name: "Rally Cry",
+      description: "When this piece captures, all friendlies gain +1 range next turn",
+      shortDescription: "Capture buffs team",
+      category: MODIFIER_TYPES.AURA,
+      rarity: "legendary",
+      shopPrice: 20,
+      redundantFor: []
+    },
+    // === RISK/REWARD (4) ===
+    glasscannon: {
+      id: "glasscannon",
+      name: "Glass Cannon",
+      description: "+3 sliding range, but all protections on this piece are bypassed",
+      shortDescription: "+3 range, no defense",
+      category: MODIFIER_TYPES.RISK,
+      rarity: "uncommon",
+      shopPrice: 10,
+      redundantFor: ["queen", "rook", "bishop"]
+    },
+    berserker: {
+      id: "berserker",
+      name: "Berserker",
+      description: "Gains +1 sliding range for each capture made this battle",
+      shortDescription: "+range per kill",
+      category: MODIFIER_TYPES.RISK,
+      rarity: "rare",
+      shopPrice: 16,
+      redundantFor: ["queen", "rook", "bishop"]
+    },
+    explosiveCapture: {
+      id: "explosiveCapture",
+      name: "Explosive Capture",
+      description: "When capturing, also removes all adjacent enemy pieces",
+      shortDescription: "AoE on capture",
+      category: MODIFIER_TYPES.RISK,
+      rarity: "legendary",
+      shopPrice: 24,
+      redundantFor: []
+    },
+    rangedCapture: {
+      id: "rangedCapture",
+      name: "Ranged Strike",
+      description: "Can capture at range without moving to the target square",
+      shortDescription: "Capture at distance",
+      category: MODIFIER_TYPES.RISK,
+      rarity: "legendary",
+      shopPrice: 22,
+      redundantFor: []
+    }
+  };
+  var RARITY_WEIGHTS = { common: 50, uncommon: 30, rare: 15, legendary: 5 };
+  function getRandomModifier(rng = Math) {
+    const all = Object.values(MODIFIERS);
+    return all[Math.floor(rng.random() * all.length)];
+  }
+  function getUpgradePackChoices(rng, excludeIds = [], count = 3, rosterTypes = []) {
+    const nonKingTypes = rosterTypes.filter((t) => t !== "king");
+    const pool = Object.values(MODIFIERS).filter((m) => {
+      if (excludeIds.includes(m.id)) return false;
+      if (m.redundantFor && m.redundantFor.length > 0 && nonKingTypes.length > 0) {
+        if (nonKingTypes.every((t) => m.redundantFor.includes(t))) return false;
+      }
+      return true;
+    });
+    if (pool.length === 0) return [];
+    const totalWeight = Object.entries(RARITY_WEIGHTS).reduce((sum, [rarity, w]) => {
+      return sum + (pool.some((m) => m.rarity === rarity) ? w : 0);
+    }, 0);
+    const choices = [];
+    const used = /* @__PURE__ */ new Set();
+    for (let i = 0; i < count && used.size < pool.length; i++) {
+      let roll = rng.random() * totalWeight;
+      let selectedRarity = "common";
+      for (const [rarity, w] of Object.entries(RARITY_WEIGHTS)) {
+        if (!pool.some((m) => m.rarity === rarity && !used.has(m.id))) continue;
+        roll -= w;
+        if (roll <= 0) {
+          selectedRarity = rarity;
+          break;
+        }
+      }
+      const candidates = pool.filter((m) => m.rarity === selectedRarity && !used.has(m.id));
+      if (candidates.length === 0) {
+        const fallback = pool.filter((m) => !used.has(m.id));
+        if (fallback.length === 0) break;
+        const pick = fallback[Math.floor(rng.random() * fallback.length)];
+        choices.push(pick);
+        used.add(pick.id);
+      } else {
+        const pick = candidates[Math.floor(rng.random() * candidates.length)];
+        choices.push(pick);
+        used.add(pick.id);
+      }
+    }
+    return choices;
+  }
+
   // src/progression/Shop.js
   var Shop = class {
     constructor(rng, eventBus) {
@@ -1724,14 +1806,13 @@
       for (let i = 0; i < modCount; i++) {
         const mod = getRandomModifier(this.rng);
         if (mod && !this.items.some((it) => it.id === mod.id)) {
-          if (mod.id === "pawnForwardCapture" && ownedRelicIds.includes("pawnForwardCapture")) continue;
           this.items.push({
             category: "modifier",
             id: mod.id,
             price: mod.shopPrice,
             name: mod.name,
             description: mod.description,
-            validPieces: mod.validPieces,
+            rarity: mod.rarity,
             modifier: mod
           });
         }
@@ -1785,12 +1866,10 @@
       this.currentNode = null;
       this.armyId = null;
       this.armyAbility = null;
+      this.difficulty = "normal";
       this.relicSystem = new RelicSystem(eventBus);
-      this.recruitment = new RecruitmentSystem(eventBus);
-      this.difficultyScaler = new DifficultyScaler();
       this.floorGenerator = null;
       this.encounterGenerator = null;
-      this.rewardTable = null;
       this.shop = null;
       this.prisoners = {};
       this.map = [];
@@ -1802,11 +1881,11 @@
       this.rng = new SeededRNG(this.seed);
       this.floorGenerator = new FloorGenerator(this.rng);
       this.encounterGenerator = new EncounterGenerator(this.rng);
-      this.rewardTable = new RewardTable(this.rng);
       this.shop = new Shop(this.rng, this.eventBus);
       this.armyId = armyId;
       const army = ARMIES[armyId];
       this.armyAbility = army.ability;
+      this.difficulty = "normal";
       this.roster = army.pieces.map((p) => new Piece(p.type, TEAMS.PLAYER));
       this.gold = STARTING_GOLD;
       this.currentFloor = 1;
@@ -1814,51 +1893,41 @@
       this.relicSystem = new RelicSystem(this.eventBus);
       this.prisoners = {};
       this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
-      this.applyArmyAbility(army);
       this.map = this.floorGenerator.generateMap(TOTAL_FLOORS);
       this.isActive = true;
       this.eventBus.emit("runStarted", { army, seed: this.seed });
     }
-    applyArmyAbility(army) {
-      if (!army.ability) return;
-      switch (army.ability) {
-        case "earlyPromotion":
-          break;
-        case "knightDoubleCapture":
-          for (const p of this.roster) {
-            if (p.type === PIECE_TYPES.KNIGHT) {
-              p.addModifier({ id: "knightDoubleCapture", type: "capture", name: "Double Move on Capture" });
-            }
-          }
-          break;
-        case "bishopPhase":
-          for (const p of this.roster) {
-            if (p.type === PIECE_TYPES.BISHOP) {
-              p.addModifier({ id: "bishopLeap", type: "movement", name: "Phase Through" });
-            }
-          }
-          break;
-        case "rookShield":
-          for (const p of this.roster) {
-            if (p.type === PIECE_TYPES.ROOK) {
-              p.addModifier({ id: "firstTurnProtection", type: "protection", name: "Opening Guard" });
-            }
-          }
-          break;
-        case "queenSplit":
-          for (const p of this.roster) {
-            if (p.type === PIECE_TYPES.QUEEN) {
-              p.addModifier({ id: "queenSplit", type: "unique", name: "Queen Split" });
-            }
-          }
-          break;
+    startRunFromDraft(difficulty, pieceTypes, seed = null) {
+      this.seed = seed || SeededRNG.generateSeed();
+      this.rng = new SeededRNG(this.seed);
+      this.floorGenerator = new FloorGenerator(this.rng);
+      this.encounterGenerator = new EncounterGenerator(this.rng);
+      this.shop = new Shop(this.rng, this.eventBus);
+      this.armyId = "draft";
+      this.armyAbility = null;
+      this.difficulty = difficulty;
+      this.roster = [];
+      this.roster.push(new Piece(PIECE_TYPES.KING, TEAMS.PLAYER));
+      for (const type of pieceTypes) {
+        if (type !== PIECE_TYPES.KING) {
+          this.roster.push(new Piece(type, TEAMS.PLAYER));
+        }
       }
+      this.gold = STARTING_GOLD;
+      this.currentFloor = 1;
+      this.currentNode = null;
+      this.relicSystem = new RelicSystem(this.eventBus);
+      this.prisoners = {};
+      this.stats = { battlesWon: 0, piecesLost: 0, piecesRecruited: 0, goldSpent: 0, floorsCleared: 0 };
+      this.map = this.floorGenerator.generateMap(TOTAL_FLOORS);
+      this.isActive = true;
+      this.eventBus.emit("runStarted", { armyId: "draft", difficulty, seed: this.seed });
     }
     getCurrentFloorData() {
       return this.map[this.currentFloor - 1] || null;
     }
     getEncounter(nodeType) {
-      const difficulty = this.difficultyScaler.getAIDifficulty(this.currentFloor);
+      const difficulty = Math.min(5, Math.ceil(this.currentFloor / 2));
       switch (nodeType) {
         case "battle":
           return this.encounterGenerator.generateBattle(this.currentFloor, difficulty);
@@ -1892,8 +1961,9 @@
     }
     onBattleWon(result) {
       this.stats.battlesWon++;
-      const mult = this.difficultyScaler.getGoldMultiplier(this.currentFloor, this.relicSystem.ownedRelics);
-      const gold = Math.floor((result.goldEarned || 10) * mult);
+      let goldMult = 1 + (this.currentFloor - 1) * 0.1;
+      if (this.relicSystem.ownedRelics.some((r) => r.id === "goldBonus")) goldMult *= 1.5;
+      const gold = Math.floor((result.goldEarned || 10) * goldMult);
       this.gold += gold;
       if (result.capturedByEnemy) {
         for (const captured of result.capturedByEnemy) {
@@ -1917,7 +1987,25 @@
           this.addPrisoner(captured.type);
         }
       }
-      return this.rewardTable.getBattleRewards(this.currentFloor, result.isElite);
+      return this._getBattleRewards(this.currentFloor, result.isElite);
+    }
+    _getBattleRewards(floor, isElite) {
+      const rewards = { gold: 0, relic: null, recruitOptions: [] };
+      const base = 8 + floor * 3;
+      const range = 5 + floor;
+      rewards.gold = base + this.rng.randomInt(0, range);
+      if (isElite) rewards.gold = Math.floor(rewards.gold * 1.5);
+      if (isElite) {
+        rewards.relic = getRandomRelic([], this.rng);
+      }
+      rewards.recruitOptions = [{ type: PIECE_TYPES.PAWN, cost: 0 }];
+      if (floor >= 2 && this.rng.random() < 0.4 + floor * 0.05) {
+        rewards.recruitOptions.push({
+          type: this.rng.randomChoice([PIECE_TYPES.KNIGHT, PIECE_TYPES.BISHOP]),
+          cost: 0
+        });
+      }
+      return rewards;
     }
     onBattleLost() {
       this.isActive = false;
@@ -1936,18 +2024,6 @@
     recruitPiece(type) {
       if (this.roster.length >= ROSTER_LIMIT) return null;
       const piece = new Piece(type, TEAMS.PLAYER);
-      if (this.armyAbility === "knightDoubleCapture" && type === PIECE_TYPES.KNIGHT) {
-        piece.addModifier({ id: "knightDoubleCapture", type: "capture", name: "Double Move on Capture" });
-      }
-      if (this.armyAbility === "rookShield" && type === PIECE_TYPES.ROOK) {
-        piece.addModifier({ id: "firstTurnProtection", type: "protection", name: "Opening Guard" });
-      }
-      if (this.armyAbility === "bishopPhase" && type === PIECE_TYPES.BISHOP) {
-        piece.addModifier({ id: "bishopLeap", type: "movement", name: "Phase Through" });
-      }
-      if (this.armyAbility === "queenSplit" && type === PIECE_TYPES.QUEEN) {
-        piece.addModifier({ id: "queenSplit", type: "unique", name: "Queen Split" });
-      }
       this.roster.push(piece);
       this.stats.piecesRecruited++;
       this.eventBus.emit("pieceRecruited", { piece });
@@ -1997,6 +2073,7 @@
       return {
         seed: this.seed,
         armyId: this.armyId,
+        difficulty: this.difficulty,
         roster: this.roster.map((p) => p.serialize()),
         gold: this.gold,
         currentFloor: this.currentFloor,
@@ -2011,10 +2088,10 @@
       this.rng = new SeededRNG(data.seed);
       this.floorGenerator = new FloorGenerator(this.rng);
       this.encounterGenerator = new EncounterGenerator(this.rng);
-      this.rewardTable = new RewardTable(this.rng);
       this.shop = new Shop(this.rng, this.eventBus);
       this.armyId = data.armyId;
-      this.armyAbility = ARMIES[data.armyId]?.ability || null;
+      this.difficulty = data.difficulty || "normal";
+      this.armyAbility = data.armyId === "draft" ? null : ARMIES[data.armyId]?.ability || null;
       this.roster = data.roster.map((p) => Piece.deserialize(p));
       this.gold = data.gold;
       this.currentFloor = data.currentFloor;
@@ -2466,10 +2543,7 @@
       this.buttons = [];
       this.buttons.push(new Button(x, startY, btnW, btnH, "New Game", {
         onClick: () => {
-          if (this.runManager) {
-            this.runManager.startRun("standard");
-            this.stateMachine.change("map");
-          }
+          this.stateMachine.change("armySelect");
         }
       }));
       const hasSave = this.saveManager && this.saveManager.hasSave();
@@ -2495,10 +2569,7 @@
       };
       this.keyHandler = (data) => {
         if (data.code === "Enter") {
-          if (this.runManager) {
-            this.runManager.startRun("standard");
-            this.stateMachine.change("map");
-          }
+          this.stateMachine.change("armySelect");
         }
       };
       this.eventBus.on("click", this.clickHandler);
@@ -2684,28 +2755,61 @@
     }
   };
   var PieceRenderer = class {
+    static _getHighestRarityColor(modifiers) {
+      const order = ["legendary", "rare", "uncommon", "common"];
+      for (const r of order) {
+        if (modifiers.some((m) => m.rarity === r)) return RARITY_COLORS[r] || RARITY_COLORS.common;
+      }
+      return RARITY_COLORS.common;
+    }
+    static _drawModifierAura(ctx, center, scale, modifiers) {
+      const count = modifiers.length;
+      const color = this._getHighestRarityColor(modifiers);
+      const baseRadius = 22 * scale;
+      const glowAlpha = Math.min(0.5, 0.15 + count * 0.08);
+      ctx.save();
+      const grad = ctx.createRadialGradient(center, center + 2 * scale, baseRadius * 0.6, center, center + 2 * scale, baseRadius * 1.3);
+      grad.addColorStop(0, "rgba(0,0,0,0)");
+      grad.addColorStop(0.6, "rgba(0,0,0,0)");
+      grad.addColorStop(0.8, color + Math.round(glowAlpha * 255).toString(16).padStart(2, "0"));
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(center, center + 2 * scale, baseRadius * 1.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(center, center + 2 * scale, baseRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = glowAlpha * 0.8;
+      ctx.lineWidth = 1.5 * scale;
+      ctx.stroke();
+      ctx.restore();
+    }
     static draw(ctx, piece, x, y, size) {
       const t = piece.team === TEAMS.PLAYER ? PIECE_THEME.player : PIECE_THEME.enemy;
       const center = size / 2;
       const scale = size / 80;
+      const hasMods = piece.modifiers.length > 0;
       const img = PieceSetLoader.getImage(piece.team, piece.type);
       if (img) {
         ctx.save();
         ctx.translate(x, y);
+        if (hasMods) this._drawModifierAura(ctx, center, scale, piece.modifiers);
         ctx.fillStyle = t.shadow;
         ctx.beginPath();
         ctx.ellipse(center, center + 24 * scale, 16 * scale, 5 * scale, 0, 0, Math.PI * 2);
         ctx.fill();
         const pad = size * 0.05;
         ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
-        if (piece.modifiers.length > 0) {
-          this.drawModifierIndicator(ctx, size, scale, t);
+        if (hasMods) {
+          this.drawModifierIndicator(ctx, size, scale, t, piece.modifiers.length, piece.modifiers);
         }
         ctx.restore();
         return;
       }
       ctx.save();
       ctx.translate(x, y);
+      if (hasMods) this._drawModifierAura(ctx, center, scale, piece.modifiers);
       ctx.fillStyle = t.shadow;
       ctx.beginPath();
       ctx.ellipse(center, center + 24 * scale, 16 * scale, 5 * scale, 0, 0, Math.PI * 2);
@@ -2730,8 +2834,8 @@
           this.drawKing(ctx, center, scale, t);
           break;
       }
-      if (piece.modifiers.length > 0) {
-        this.drawModifierIndicator(ctx, size, scale, t);
+      if (hasMods) {
+        this.drawModifierIndicator(ctx, size, scale, t, piece.modifiers.length, piece.modifiers);
       }
       ctx.restore();
     }
@@ -3013,14 +3117,15 @@
       this._drawHighlight(ctx, c, s, c - 6 * s, 10);
       this._drawBase(ctx, c, s, t);
     }
-    static drawModifierIndicator(ctx, size, s, t) {
-      const x = size - 4 * s;
-      const y = 4 * s;
-      const r = 3.5 * s;
+    static drawModifierIndicator(ctx, size, s, t, count = 1, modifiers = []) {
+      const x = size - 5 * s;
+      const y = 5 * s;
+      const r = 5 * s;
+      const color = modifiers.length > 0 ? this._getHighestRarityColor(modifiers) : t.accent;
       ctx.save();
-      ctx.shadowColor = t.accent;
-      ctx.shadowBlur = 6 * s;
-      ctx.fillStyle = t.accent;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8 * s;
+      ctx.fillStyle = color;
       ctx.beginPath();
       ctx.moveTo(x, y - r);
       ctx.lineTo(x + r * 0.7, y);
@@ -3035,29 +3140,131 @@
       ctx.lineTo(x, y + r);
       ctx.lineTo(x - r * 0.7, y);
       ctx.closePath();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-      ctx.lineWidth = 0.5 * s;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.lineWidth = 0.8 * s;
       ctx.stroke();
+      ctx.font = `bold ${Math.round(5.5 * s)}px monospace`;
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${count}`, x, y + 0.5 * s);
     }
   };
 
   // src/states/ArmySelectState.js
+  var DIFFICULTIES = [
+    { id: "easy", name: "Easy", points: DRAFT_POINTS.easy, color: "#5a9e6a", desc: "A generous budget to build your army" },
+    { id: "normal", name: "Normal", points: DRAFT_POINTS.normal, color: "#c9a84e", desc: "A balanced challenge" },
+    { id: "hard", name: "Hard", points: DRAFT_POINTS.hard, color: "#c04050", desc: "A lean, punishing roster" }
+  ];
+  var DRAFT_PIECES = [
+    { type: PIECE_TYPES.PAWN, cost: DRAFT_COSTS.pawn },
+    { type: PIECE_TYPES.KNIGHT, cost: DRAFT_COSTS.knight },
+    { type: PIECE_TYPES.BISHOP, cost: DRAFT_COSTS.bishop },
+    { type: PIECE_TYPES.ROOK, cost: DRAFT_COSTS.rook },
+    { type: PIECE_TYPES.QUEEN, cost: DRAFT_COSTS.queen }
+  ];
+  var PRESETS = [
+    {
+      name: "Classic",
+      desc: "Balanced officers + pawns",
+      build(budget) {
+        const c = {};
+        let rem = budget;
+        if (rem >= 14) {
+          c.queen = 1;
+          rem -= 5;
+        }
+        if (rem >= 3) {
+          c.rook = 1;
+          rem -= 3;
+        }
+        const knightCount = Math.min(2, Math.floor(rem / 2));
+        if (knightCount > 0) {
+          c.knight = knightCount;
+          rem -= knightCount * 2;
+        }
+        if (rem >= 2) {
+          c.bishop = 1;
+          rem -= 2;
+        }
+        if (rem > 0) {
+          c.pawn = rem;
+        }
+        return c;
+      }
+    },
+    {
+      name: "Cavalry",
+      desc: "Knights with pawn support",
+      build(budget) {
+        const c = {};
+        let rem = budget;
+        const knightCount = Math.min(4, Math.floor(rem / 2));
+        const knights = Math.min(knightCount, Math.floor((rem - 2) / 2));
+        c.knight = Math.max(1, knights);
+        rem -= c.knight * 2;
+        if (rem > 0) c.pawn = rem;
+        return c;
+      }
+    },
+    {
+      name: "Artillery",
+      desc: "Queen + rook firepower",
+      build(budget) {
+        const c = {};
+        let rem = budget;
+        if (rem >= 5) {
+          c.queen = 1;
+          rem -= 5;
+        }
+        const rookCount = Math.min(2, Math.floor(rem / 3));
+        if (rookCount > 0) {
+          c.rook = rookCount;
+          rem -= rookCount * 3;
+        }
+        if (rem >= 2 && !c.queen) {
+          c.bishop = 1;
+          rem -= 2;
+        }
+        if (rem > 0) c.pawn = rem;
+        return c;
+      }
+    },
+    {
+      name: "Horde",
+      desc: "Maximum pieces",
+      build(budget) {
+        return { pawn: budget };
+      }
+    }
+  ];
   var ArmySelectState = class {
     constructor() {
       this.stateMachine = null;
       this.eventBus = null;
       this.renderer = null;
       this.runManager = null;
-      this.armies = getArmyList();
-      this.selectedIndex = 0;
+      this.phase = "difficulty";
+      this.selectedDifficulty = null;
       this.hoverIndex = -1;
+      this.pointBudget = 0;
+      this.pointsSpent = 0;
+      this.draftCounts = {};
+      this.hoverButton = null;
+      this.hoverPreset = -1;
       this.clickHandler = null;
       this.moveHandler = null;
       this.keyHandler = null;
     }
     enter() {
-      this.selectedIndex = 0;
+      this.phase = "difficulty";
+      this.selectedDifficulty = null;
       this.hoverIndex = -1;
+      this.hoverButton = null;
+      this.hoverPreset = -1;
+      this.draftCounts = {};
+      this.pointsSpent = 0;
       this.bindInput();
     }
     exit() {
@@ -3073,57 +3280,226 @@
       this.eventBus.on("mousemove", this.moveHandler);
       this.eventBus.on("keydown", this.keyHandler);
     }
-    getCardBounds() {
-      const cardW = 180;
-      const cardH = 250;
-      const gap = 18;
-      const totalW = this.armies.length * (cardW + gap) - gap;
+    // === DIFFICULTY PHASE ===
+    getDifficultyCardBounds() {
+      const cardW = 170;
+      const cardH = 200;
+      const gap = 20;
+      const totalW = DIFFICULTIES.length * (cardW + gap) - gap;
       const startX = (this.renderer.width - totalW) / 2;
-      const y = this.renderer.height / 2 - cardH / 2 + 24;
-      return this.armies.map((_, i) => ({
+      const y = this.renderer.height / 2 - cardH / 2 + 20;
+      return DIFFICULTIES.map((_, i) => ({
         x: startX + i * (cardW + gap),
         y,
         w: cardW,
         h: cardH
       }));
     }
+    // === DRAFT PHASE ===
+    getPointsRemaining() {
+      return this.pointBudget - this.pointsSpent;
+    }
+    getTotalPieces() {
+      let count = 1;
+      for (const type of Object.keys(this.draftCounts)) {
+        count += this.draftCounts[type];
+      }
+      return count;
+    }
+    getDraftRowBounds() {
+      const rowH = 50;
+      const rowW = 320;
+      const gap = 6;
+      const startX = (this.renderer.width - rowW) / 2;
+      const startY = 180;
+      return DRAFT_PIECES.map((p, i) => ({
+        x: startX,
+        y: startY + i * (rowH + gap),
+        w: rowW,
+        h: rowH,
+        type: p.type,
+        cost: p.cost,
+        minusBtn: { x: startX + rowW - 80, y: startY + i * (rowH + gap) + 10, w: 30, h: 30 },
+        plusBtn: { x: startX + rowW - 40, y: startY + i * (rowH + gap) + 10, w: 30, h: 30 }
+      }));
+    }
+    getPresetBounds() {
+      const btnW = 72;
+      const btnH = 26;
+      const gap = 8;
+      const totalW = PRESETS.length * (btnW + gap) - gap;
+      const startX = (this.renderer.width - totalW) / 2;
+      const y = 120;
+      return PRESETS.map((p, i) => ({
+        x: startX + i * (btnW + gap),
+        y,
+        w: btnW,
+        h: btnH,
+        preset: p
+      }));
+    }
+    applyPreset(preset) {
+      const counts = preset.build(this.pointBudget);
+      this.draftCounts = {};
+      this.pointsSpent = 0;
+      for (const [type, count] of Object.entries(counts)) {
+        if (count > 0) {
+          this.draftCounts[type] = count;
+          this.pointsSpent += count * DRAFT_COSTS[type];
+        }
+      }
+    }
+    getStartButton() {
+      const bw = 160;
+      const bh = 44;
+      return { x: (this.renderer.width - bw) / 2, y: this.renderer.height - 80, w: bw, h: bh };
+    }
+    getBackButton() {
+      return { x: 20, y: 20, w: 70, h: 30 };
+    }
+    canStart() {
+      return this.getTotalPieces() >= 2;
+    }
+    // === INPUT ===
     handleClick(data) {
-      const bounds = this.getCardBounds();
-      for (let i = 0; i < bounds.length; i++) {
-        const b = bounds[i];
-        if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
-          this.selectArmy(i);
+      if (this.phase === "difficulty") {
+        const bounds = this.getDifficultyCardBounds();
+        for (let i = 0; i < bounds.length; i++) {
+          const b = bounds[i];
+          if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+            this.selectDifficulty(i);
+            return;
+          }
+        }
+      } else if (this.phase === "draft") {
+        const back = this.getBackButton();
+        if (data.x >= back.x && data.x <= back.x + back.w && data.y >= back.y && data.y <= back.y + back.h) {
+          this.phase = "difficulty";
+          this.hoverButton = null;
           return;
+        }
+        const start = this.getStartButton();
+        if (data.x >= start.x && data.x <= start.x + start.w && data.y >= start.y && data.y <= start.y + start.h) {
+          if (this.canStart()) {
+            this.startDraftRun();
+          }
+          return;
+        }
+        const presets = this.getPresetBounds();
+        for (let i = 0; i < presets.length; i++) {
+          const b = presets[i];
+          if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+            this.applyPreset(b.preset);
+            return;
+          }
+        }
+        const rows = this.getDraftRowBounds();
+        for (const row of rows) {
+          const minus = row.minusBtn;
+          if (data.x >= minus.x && data.x <= minus.x + minus.w && data.y >= minus.y && data.y <= minus.y + minus.h) {
+            this.removePiece(row.type);
+            return;
+          }
+          const plus = row.plusBtn;
+          if (data.x >= plus.x && data.x <= plus.x + plus.w && data.y >= plus.y && data.y <= plus.y + plus.h) {
+            this.addPiece(row.type, row.cost);
+            return;
+          }
         }
       }
     }
     handleMove(data) {
-      const bounds = this.getCardBounds();
+      this.hoverButton = null;
       this.hoverIndex = -1;
-      for (let i = 0; i < bounds.length; i++) {
-        const b = bounds[i];
-        if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
-          this.hoverIndex = i;
-          break;
+      this.hoverPreset = -1;
+      if (this.phase === "difficulty") {
+        const bounds = this.getDifficultyCardBounds();
+        for (let i = 0; i < bounds.length; i++) {
+          const b = bounds[i];
+          if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+            this.hoverIndex = i;
+            break;
+          }
+        }
+      } else if (this.phase === "draft") {
+        const back = this.getBackButton();
+        if (data.x >= back.x && data.x <= back.x + back.w && data.y >= back.y && data.y <= back.y + back.h) {
+          this.hoverButton = "back";
+          return;
+        }
+        const start = this.getStartButton();
+        if (data.x >= start.x && data.x <= start.x + start.w && data.y >= start.y && data.y <= start.y + start.h) {
+          this.hoverButton = "start";
+          return;
+        }
+        const presets = this.getPresetBounds();
+        for (let i = 0; i < presets.length; i++) {
+          const b = presets[i];
+          if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+            this.hoverPreset = i;
+            return;
+          }
+        }
+        const rows = this.getDraftRowBounds();
+        for (const row of rows) {
+          const minus = row.minusBtn;
+          if (data.x >= minus.x && data.x <= minus.x + minus.w && data.y >= minus.y && data.y <= minus.y + minus.h) {
+            this.hoverButton = { type: row.type, action: "minus" };
+            return;
+          }
+          const plus = row.plusBtn;
+          if (data.x >= plus.x && data.x <= plus.x + plus.w && data.y >= plus.y && data.y <= plus.y + plus.h) {
+            this.hoverButton = { type: row.type, action: "plus" };
+            return;
+          }
         }
       }
     }
     handleKey(data) {
-      if (data.code === "ArrowLeft") {
-        this.selectedIndex = (this.selectedIndex - 1 + this.armies.length) % this.armies.length;
-      } else if (data.code === "ArrowRight") {
-        this.selectedIndex = (this.selectedIndex + 1) % this.armies.length;
-      } else if (data.code === "Enter" || data.code === "Space") {
-        this.selectArmy(this.selectedIndex);
-      } else if (data.code === "Escape") {
-        this.stateMachine.change("mainMenu");
+      if (data.code === "Escape") {
+        if (this.phase === "draft") {
+          this.phase = "difficulty";
+          this.hoverButton = null;
+        } else {
+          this.stateMachine.change("mainMenu");
+        }
       }
     }
-    selectArmy(index) {
-      const army = this.armies[index];
+    selectDifficulty(index) {
+      this.selectedDifficulty = DIFFICULTIES[index];
+      this.pointBudget = this.selectedDifficulty.points;
+      this.pointsSpent = 0;
+      this.draftCounts = {};
+      this.phase = "draft";
+      this.hoverButton = null;
+    }
+    addPiece(type, cost) {
+      if (this.getPointsRemaining() < cost) return;
+      if (!this.draftCounts[type]) this.draftCounts[type] = 0;
+      this.draftCounts[type]++;
+      this.pointsSpent += cost;
+    }
+    removePiece(type) {
+      if (!this.draftCounts[type] || this.draftCounts[type] <= 0) return;
+      const cost = DRAFT_COSTS[type];
+      this.draftCounts[type]--;
+      this.pointsSpent -= cost;
+    }
+    startDraftRun() {
+      if (!this.canStart()) return;
+      const pieceTypes = [];
+      for (const [type, count] of Object.entries(this.draftCounts)) {
+        for (let i = 0; i < count; i++) {
+          pieceTypes.push(type);
+        }
+      }
       if (this.runManager) {
-        this.runManager.startRun(army.id);
-        this.stateMachine.change("map");
+        this.runManager.startRunFromDraft(this.selectedDifficulty.id, pieceTypes);
+        this.stateMachine.change("upgrade", {
+          nextState: "map",
+          nextParams: {},
+          source: "draft"
+        });
       }
     }
     update(dt) {
@@ -3133,59 +3509,198 @@
       const h = this.renderer.height;
       UITheme.drawBackground(ctx, w, h);
       UITheme.drawVignette(ctx, w, h, 0.4);
-      UITheme.drawTitle(ctx, "Choose Your Army", w / 2, 55, 32);
+      if (this.phase === "difficulty") {
+        this.renderDifficultyPhase(ctx, w, h);
+      } else {
+        this.renderDraftPhase(ctx, w, h);
+      }
+    }
+    renderDifficultyPhase(ctx, w, h) {
+      UITheme.drawTitle(ctx, "Choose Difficulty", w / 2, 55, 30);
       ctx.font = "13px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("Select a starting army for your run", w / 2, 90);
+      ctx.fillText("Difficulty determines your draft budget", w / 2, 90);
       UITheme.drawDivider(ctx, w / 2 - 140, 110, 280);
-      const bounds = this.getCardBounds();
-      for (let i = 0; i < this.armies.length; i++) {
-        const army = this.armies[i];
+      const bounds = this.getDifficultyCardBounds();
+      for (let i = 0; i < DIFFICULTIES.length; i++) {
+        const diff = DIFFICULTIES[i];
         const b = bounds[i];
         const isHover = this.hoverIndex === i;
-        const isSelected = this.selectedIndex === i;
-        const active = isHover || isSelected;
         UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
-          highlight: active,
-          glow: isSelected,
-          fill: active ? "#1a1a28" : UI_COLORS.panel
+          highlight: isHover,
+          glow: isHover,
+          fill: isHover ? "#1a1a28" : UI_COLORS.panel
         });
         ctx.beginPath();
         UITheme.roundRect(ctx, b.x + 1, b.y + 1, b.w - 2, 3, 2);
-        ctx.fillStyle = army.color;
-        ctx.globalAlpha = active ? 0.8 : 0.4;
+        ctx.fillStyle = diff.color;
+        ctx.globalAlpha = isHover ? 0.8 : 0.4;
         ctx.fill();
         ctx.globalAlpha = 1;
-        ctx.font = "bold 13px monospace";
-        ctx.fillStyle = active ? army.color : UI_COLORS.text;
+        ctx.font = "bold 18px monospace";
+        ctx.fillStyle = isHover ? diff.color : UI_COLORS.text;
         ctx.textAlign = "center";
-        ctx.fillText(army.name, b.x + b.w / 2, b.y + 26);
-        const pieceSize = 28;
-        const piecesPerRow = 4;
-        const pieceGap = 4;
-        const pieceTotalW = Math.min(army.pieces.length, piecesPerRow) * (pieceSize + pieceGap);
-        const pieceStartX = b.x + (b.w - pieceTotalW) / 2;
-        for (let j = 0; j < army.pieces.length; j++) {
-          const row = Math.floor(j / piecesPerRow);
-          const col = j % piecesPerRow;
-          const px = pieceStartX + col * (pieceSize + pieceGap);
-          const py = b.y + 44 + row * (pieceSize + pieceGap);
-          const tempPiece = new Piece(army.pieces[j].type, TEAMS.PLAYER);
-          PieceRenderer.draw(ctx, tempPiece, px, py, pieceSize);
-        }
+        ctx.fillText(diff.name, b.x + b.w / 2, b.y + 40);
+        ctx.font = "bold 36px monospace";
+        ctx.fillStyle = diff.color;
+        ctx.fillText(`${diff.points}`, b.x + b.w / 2, b.y + 90);
         ctx.font = "11px monospace";
         ctx.fillStyle = UI_COLORS.textDim;
-        ctx.textAlign = "center";
-        UITheme.wrapText(ctx, army.description, b.x + b.w / 2, b.y + 148, b.w - 20, 14);
+        ctx.fillText("points", b.x + b.w / 2, b.y + 115);
+        ctx.font = "10px monospace";
+        ctx.fillStyle = UI_COLORS.textDim;
+        UITheme.wrapText(ctx, diff.desc, b.x + b.w / 2, b.y + 145, b.w - 24, 14);
       }
       ctx.font = "12px monospace";
       ctx.fillStyle = UI_COLORS.textDim;
       ctx.textAlign = "center";
       ctx.globalAlpha = 0.6;
-      ctx.fillText("Click to select  |  Arrow keys to browse", w / 2, h - 40);
+      ctx.fillText("Click to select  |  Esc to go back", w / 2, h - 40);
       ctx.globalAlpha = 1;
+    }
+    renderDraftPhase(ctx, w, h) {
+      const back = this.getBackButton();
+      UITheme.drawButton(ctx, back.x, back.y, back.w, back.h, "< Back", this.hoverButton === "back", { fontSize: 11 });
+      UITheme.drawTitle(ctx, "Draft Your Army", w / 2, 40, 26);
+      const remaining = this.getPointsRemaining();
+      const diffColor = this.selectedDifficulty.color;
+      ctx.font = "bold 18px monospace";
+      ctx.fillStyle = remaining > 0 ? diffColor : UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${remaining} / ${this.pointBudget} points`, w / 2, 75);
+      ctx.font = "11px monospace";
+      ctx.fillStyle = diffColor;
+      ctx.globalAlpha = 0.6;
+      ctx.fillText(this.selectedDifficulty.name, w / 2, 96);
+      ctx.globalAlpha = 1;
+      UITheme.drawDivider(ctx, w / 2 - 120, 112, 240);
+      const presetBounds = this.getPresetBounds();
+      for (let i = 0; i < presetBounds.length; i++) {
+        const b = presetBounds[i];
+        const isHover = this.hoverPreset === i;
+        UITheme.drawButton(ctx, b.x, b.y, b.w, b.h, b.preset.name, isHover, {
+          fontSize: 10,
+          textColor: isHover ? UI_COLORS.accent : UI_COLORS.textDim,
+          border: isHover ? UI_COLORS.accent + "60" : UI_COLORS.panelBorder + "80"
+        });
+      }
+      const rows = this.getDraftRowBounds();
+      const kingY = rows[0].y - 56;
+      const kingX = rows[0].x;
+      UITheme.drawPanel(ctx, kingX, kingY, rows[0].w, 44, {
+        fill: "#1a1a1e",
+        border: UI_COLORS.gold + "40"
+      });
+      const kingPiece = new Piece(PIECE_TYPES.KING, TEAMS.PLAYER);
+      PieceRenderer.draw(ctx, kingPiece, kingX + 8, kingY + 6, 32);
+      ctx.font = "bold 13px monospace";
+      ctx.fillStyle = UI_COLORS.gold;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText("King", kingX + 48, kingY + 16);
+      ctx.font = "10px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.fillText("Always included  (free)", kingX + 48, kingY + 32);
+      for (const row of rows) {
+        const count = this.draftCounts[row.type] || 0;
+        const canAdd = remaining >= row.cost;
+        UITheme.drawPanel(ctx, row.x, row.y, row.w, row.h, {
+          fill: count > 0 ? "#181825" : UI_COLORS.panel
+        });
+        const tempPiece = new Piece(row.type, TEAMS.PLAYER);
+        PieceRenderer.draw(ctx, tempPiece, row.x + 8, row.y + 9, 32);
+        ctx.font = "bold 13px monospace";
+        ctx.fillStyle = UI_COLORS.text;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        const label = row.type.charAt(0).toUpperCase() + row.type.slice(1);
+        ctx.fillText(label, row.x + 48, row.y + 18);
+        ctx.font = "10px monospace";
+        ctx.fillStyle = UI_COLORS.textDim;
+        ctx.fillText(`${row.cost} pts each`, row.x + 48, row.y + 34);
+        ctx.font = "bold 16px monospace";
+        ctx.fillStyle = count > 0 ? UI_COLORS.accent : UI_COLORS.textDim;
+        ctx.textAlign = "center";
+        ctx.fillText(`${count}`, row.x + row.w - 60, row.y + row.h / 2);
+        const isMinusHover = this.hoverButton && this.hoverButton.type === row.type && this.hoverButton.action === "minus";
+        this._drawSmallButton(ctx, row.minusBtn, "-", count > 0, isMinusHover);
+        const isPlusHover = this.hoverButton && this.hoverButton.type === row.type && this.hoverButton.action === "plus";
+        this._drawSmallButton(ctx, row.plusBtn, "+", canAdd, isPlusHover);
+      }
+      this._drawRosterPreview(ctx, w, h, rows);
+      const start = this.getStartButton();
+      const canStartRun = this.canStart();
+      UITheme.drawButton(ctx, start.x, start.y, start.w, start.h, "Start Run", this.hoverButton === "start" && canStartRun, {
+        textColor: canStartRun ? UI_COLORS.text : UI_COLORS.textDim,
+        border: canStartRun ? UI_COLORS.panelBorder : "#1a1a1e"
+      });
+      if (!canStartRun) {
+        ctx.font = "10px monospace";
+        ctx.fillStyle = UI_COLORS.danger;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Need at least 1 piece besides King", w / 2, start.y + start.h + 16);
+      }
+    }
+    _drawSmallButton(ctx, btn, text, enabled, isHover) {
+      ctx.beginPath();
+      UITheme.roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 4);
+      if (!enabled) {
+        ctx.fillStyle = "#0e0e14";
+      } else if (isHover) {
+        ctx.fillStyle = "rgba(200, 168, 78, 0.2)";
+      } else {
+        ctx.fillStyle = UI_COLORS.panel;
+      }
+      ctx.fill();
+      ctx.beginPath();
+      UITheme.roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 4);
+      ctx.strokeStyle = enabled ? isHover ? UI_COLORS.accent : UI_COLORS.panelBorder : "#1a1a1e";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.font = "bold 16px monospace";
+      ctx.fillStyle = enabled ? isHover ? UI_COLORS.accent : UI_COLORS.text : UI_COLORS.textDim + "40";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, btn.x + btn.w / 2, btn.y + btn.h / 2);
+    }
+    _drawRosterPreview(ctx, w, h, rows) {
+      const previewX = rows[0].x + rows[0].w + 30;
+      const previewY = rows[0].y - 56;
+      if (previewX + 100 > w) return;
+      ctx.font = "bold 11px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("Roster", previewX, previewY);
+      let y = previewY + 20;
+      const size = 24;
+      const gap = 4;
+      const perRow = 4;
+      let col = 0;
+      const kingPiece = new Piece(PIECE_TYPES.KING, TEAMS.PLAYER);
+      PieceRenderer.draw(ctx, kingPiece, previewX + col * (size + gap), y, size);
+      col++;
+      for (const [type, count] of Object.entries(this.draftCounts)) {
+        for (let i = 0; i < count; i++) {
+          if (col >= perRow) {
+            col = 0;
+            y += size + gap;
+          }
+          const p = new Piece(type, TEAMS.PLAYER);
+          PieceRenderer.draw(ctx, p, previewX + col * (size + gap), y, size);
+          col++;
+        }
+      }
+      ctx.font = "10px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      y += size + gap + 8;
+      ctx.fillText(`${this.getTotalPieces()} pieces`, previewX, y);
     }
   };
 
@@ -4789,6 +5304,8 @@
     constructor(board, eventBus) {
       this.board = board;
       this.eventBus = eventBus;
+      this.modifierSystem = null;
+      this.rng = Math;
     }
     canCapture(attacker, targetCol, targetRow) {
       const target = this.board.getPieceAt(targetCol, targetRow);
@@ -4798,21 +5315,21 @@
       if (tile.terrain === TERRAIN_TYPES.FORTRESS) {
         return false;
       }
-      for (const mod of target.modifiers) {
-        if (mod.type === "protection") {
-          if (mod.id === "sideProtection") {
-            if (attacker.col !== targetCol && attacker.row === targetRow) {
-              return false;
-            }
-          }
-          if (mod.id === "firstTurnProtection" && target.moveCount <= 1) {
-            return false;
-          }
-        }
+      if (this.modifierSystem) {
+        return this.modifierSystem.canBeCaptured(target, attacker);
       }
       return true;
     }
     resolveCapture(attacker, target) {
+      if (target.hasModifier("gamblersFate") && !attacker.hasModifier("glasscannon")) {
+        if (this.rng.random() < 0.5) {
+          this.eventBus.emit("gamblersFateSurvived", {
+            piece: target,
+            attacker
+          });
+          return null;
+        }
+      }
       this.board.removePiece(target);
       this.eventBus.emit("pieceCaptured", {
         captured: target,
@@ -4820,14 +5337,23 @@
         col: target.col,
         row: target.row
       });
-      if (target.type === PIECE_TYPES.QUEEN) {
-        for (const mod of target.modifiers) {
-          if (mod.id === "queenSplit") {
-            this.eventBus.emit("queenSplit", { queen: target });
-          }
-        }
-      }
       return target;
+    }
+    resolveExplosion(attacker, adjacentEnemies) {
+      const removed = [];
+      for (const enemy of adjacentEnemies) {
+        if (enemy.type === PIECE_TYPES.KING) continue;
+        this.board.removePiece(enemy);
+        removed.push(enemy);
+        this.eventBus.emit("pieceCaptured", {
+          captured: enemy,
+          capturedBy: attacker,
+          col: enemy.col,
+          row: enemy.row,
+          explosive: true
+        });
+      }
+      return removed;
     }
     getGoldValue(piece) {
       return 1;
@@ -5293,35 +5819,206 @@
 
   // src/pieces/ModifierSystem.js
   var ModifierSystem = class {
-    constructor(board, relics = []) {
+    constructor(board, relics = [], turnManager = null) {
       this.board = board;
       this.relics = relics;
+      this.turnManager = turnManager;
+      this.battleCaptureCount = {};
+      this.rallyActive = false;
+      this.lastStandTurnStart = {};
     }
-    applyModifier(piece, moves, mod) {
-      switch (mod.id) {
-        case "knightKingMove":
-          return this.addKingMoves(piece, moves);
-        case "pawnDiagonalMove":
-          return this.addPawnDiagonalMoves(piece, moves);
-        case "bishopLeap":
-          return this.addBishopLeapMoves(piece, moves);
-        case "pawnForwardCapture":
-          return this.addPawnForwardCapture(piece, moves);
-        case "rookExtraRange":
-          return this.addRookJumpMoves(piece, moves);
-        case "kingInspire":
-          return this.addInspiredMoves(piece, moves);
-        default:
-          return moves;
+    resetBattleState() {
+      this.battleCaptureCount = {};
+      this.rallyActive = false;
+      this.lastStandTurnStart = {};
+    }
+    onCapture(piece) {
+      if (!this.battleCaptureCount[piece.id]) {
+        this.battleCaptureCount[piece.id] = 0;
+      }
+      this.battleCaptureCount[piece.id]++;
+      if (piece.hasModifier("rally")) {
+        this.rallyActive = true;
       }
     }
-    applyRelicEffects(piece, moves) {
-      if (piece.type === PIECE_TYPES.PAWN && this.hasRelic("pawnForwardCapture") && !piece.hasModifier("pawnForwardCapture")) {
-        moves = this.addPawnForwardCapture(piece, moves);
+    consumeRally() {
+      if (this.rallyActive) {
+        this.rallyActive = false;
+        return true;
       }
+      return false;
+    }
+    // ===== MAIN PUBLIC API =====
+    getModifiedMoves(piece, baseMoves) {
+      let moves = [...baseMoves];
+      for (const mod of piece.modifiers) {
+        switch (mod.id) {
+          case "leapOver":
+            moves = this._addLeapOverMoves(piece, moves);
+            break;
+          case "extraRange":
+            moves = this._extendRange(piece, moves, 2);
+            break;
+          case "kingStep":
+            moves = this._addKingMoves(piece, moves);
+            break;
+          case "sidestep":
+            moves = this._addSidestep(piece, moves);
+            break;
+          case "retreat":
+            moves = this._addRetreat(piece, moves);
+            break;
+          case "diagonalSlip":
+            moves = this._addDiagonalSlip(piece, moves);
+            break;
+          case "charge":
+            if (piece.moveCount === 0) {
+              moves = this._extendRange(piece, moves, 3);
+            }
+            break;
+          case "phasing":
+            moves = this._addPhasingMoves(piece, moves);
+            break;
+          case "glasscannon":
+            moves = this._extendRange(piece, moves, 3);
+            break;
+          case "berserker": {
+            const kills = this.battleCaptureCount[piece.id] || 0;
+            if (kills > 0) {
+              moves = this._extendRange(piece, moves, kills);
+            }
+            break;
+          }
+          case "forwardCapture":
+            moves = this._addForwardCapture(piece, moves);
+            break;
+          case "rangedCapture":
+            moves = this._flagRangedCaptures(piece, moves);
+            break;
+        }
+      }
+      const friendlies = this.board.getTeamPieces(piece.team);
+      for (const ally of friendlies) {
+        if (ally.id === piece.id) continue;
+        if (!ally.hasModifier("inspire")) continue;
+        const dx = Math.abs(piece.col - ally.col);
+        const dy = Math.abs(piece.row - ally.row);
+        if (dx <= 1 && dy <= 1) {
+          moves = this._extendRange(piece, moves, 1);
+          break;
+        }
+      }
+      if (this.rallyActive && piece.team === TEAMS.PLAYER) {
+        moves = this._extendRange(piece, moves, 1);
+      }
+      const enemies = this.board.getTeamPieces(piece.team === TEAMS.PLAYER ? TEAMS.ENEMY : TEAMS.PLAYER);
+      for (const enemy of enemies) {
+        if (!enemy.hasModifier("intimidate")) continue;
+        const dx = Math.abs(piece.col - enemy.col);
+        const dy = Math.abs(piece.row - enemy.row);
+        if (dx <= 1 && dy <= 1) {
+          moves = this._reduceRange(piece, moves, 1);
+          break;
+        }
+      }
+      if (piece.hasModifier("anchored")) {
+        moves = moves.filter((m) => {
+          const dist = Math.max(Math.abs(m.col - piece.col), Math.abs(m.row - piece.row));
+          return dist <= 2;
+        });
+      }
+      moves = this._applyRelicEffects(piece, moves);
       return moves;
     }
-    addKingMoves(piece, moves) {
+    handlePostCapture(piece, capturedPiece) {
+      const results = { extraMove: false, returnToStart: false, startCol: 0, startRow: 0, explode: false, adjacentEnemies: [] };
+      if (piece.hasModifier("doubleCapture")) {
+        results.extraMove = true;
+      }
+      if (piece.hasModifier("captureChain")) {
+        const futureMoves = this.getModifiedMoves(piece, this._getBaseMoves(piece));
+        if (futureMoves.some((m) => m.type === "capture")) {
+          results.extraMove = true;
+        }
+      }
+      if (piece.hasModifier("captureRetreat")) {
+        results.returnToStart = true;
+      }
+      if (piece.hasModifier("explosiveCapture")) {
+        results.explode = true;
+        const offsets = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+        for (const [dc, dr] of offsets) {
+          const nc = capturedPiece.col + dc;
+          const nr = capturedPiece.row + dr;
+          if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) continue;
+          const adj = this.board.getPieceAt(nc, nr);
+          if (adj && adj.team !== piece.team && adj.id !== piece.id) {
+            results.adjacentEnemies.push(adj);
+          }
+        }
+      }
+      return results;
+    }
+    canBeCaptured(target, attacker) {
+      if (attacker.hasModifier("glasscannon")) {
+        return true;
+      }
+      if (target.hasModifier("glasscannon")) {
+        return true;
+      }
+      const turnNum = this.turnManager ? this.turnManager.turnNumber : 999;
+      if (target.hasModifier("firstTurnShield") && turnNum < 4) {
+        return false;
+      }
+      if (target.hasModifier("flankShield")) {
+        if (attacker.row === target.row && attacker.col !== target.col) {
+          return false;
+        }
+      }
+      if (target.hasModifier("rearShield")) {
+        const isPlayer = target.team === TEAMS.PLAYER;
+        if (isPlayer && attacker.row > target.row) return false;
+        if (!isPlayer && attacker.row < target.row) return false;
+      }
+      if (target.hasModifier("adjacencyShield")) {
+        const friendlies = this.board.getTeamPieces(target.team);
+        const hasAdjacentFriendly = friendlies.some((f) => {
+          if (f.id === target.id) return false;
+          return Math.abs(f.col - target.col) <= 1 && Math.abs(f.row - target.row) <= 1;
+        });
+        if (hasAdjacentFriendly) return false;
+      }
+      if (target.hasModifier("lastStand")) {
+        const teamPieces = this.board.getTeamPieces(target.team);
+        const nonKingPieces = teamPieces.filter((p) => p.type !== PIECE_TYPES.KING);
+        if (nonKingPieces.length === 1 && nonKingPieces[0].id === target.id) {
+          if (!this.lastStandTurnStart[target.id]) {
+            this.lastStandTurnStart[target.id] = turnNum;
+          }
+          const elapsed = turnNum - this.lastStandTurnStart[target.id];
+          if (elapsed < 6) return false;
+        }
+      }
+      if (target.hasModifier("anchored")) {
+        return false;
+      }
+      const targetFriendlies = this.board.getTeamPieces(target.team);
+      for (const ally of targetFriendlies) {
+        if (ally.id === target.id) continue;
+        if (!ally.hasModifier("guardian")) continue;
+        const dx = Math.abs(ally.col - target.col);
+        const dy = Math.abs(ally.row - target.row);
+        if (dx > 1 || dy > 1) continue;
+        const guardDir = { col: Math.sign(ally.col - target.col), row: Math.sign(ally.row - target.row) };
+        const attackDir = { col: Math.sign(attacker.col - target.col), row: Math.sign(attacker.row - target.row) };
+        if (guardDir.col === attackDir.col && guardDir.row === attackDir.row) {
+          return false;
+        }
+      }
+      return true;
+    }
+    // ===== MOVEMENT HELPERS =====
+    _addKingMoves(piece, moves) {
       const offsets = [
         [-1, -1],
         [0, -1],
@@ -5336,9 +6033,9 @@
         const nc = piece.col + dc;
         const nr = piece.row + dr;
         if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) continue;
-        const tile = this.board.getTile(nc, nr);
-        if (!tile.isPassable()) continue;
         if (moves.some((m) => m.col === nc && m.row === nr)) continue;
+        const tile = this.board.getTile(nc, nr);
+        if (!tile || !tile.isPassable()) continue;
         if (tile.hasPiece()) {
           if (tile.piece.team !== piece.team) {
             moves.push({ col: nc, row: nr, type: "capture" });
@@ -5349,31 +6046,93 @@
       }
       return moves;
     }
-    addPawnDiagonalMoves(piece, moves) {
-      const dir = piece.team === TEAMS.PLAYER ? -1 : 1;
+    _addSidestep(piece, moves) {
       for (const dc of [-1, 1]) {
         const nc = piece.col + dc;
-        const nr = piece.row + dir;
+        const nr = piece.row;
         if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) continue;
         if (moves.some((m) => m.col === nc && m.row === nr)) continue;
         const tile = this.board.getTile(nc, nr);
-        if (tile.isEmpty() && tile.isPassable()) {
+        if (!tile || !tile.isPassable()) continue;
+        if (tile.hasPiece()) {
+          if (tile.piece.team !== piece.team) {
+            moves.push({ col: nc, row: nr, type: "capture" });
+          }
+        } else {
           moves.push({ col: nc, row: nr, type: "move" });
         }
       }
       return moves;
     }
-    addBishopLeapMoves(piece, moves) {
-      const directions = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
-      for (const [dc, dr] of directions) {
+    _addRetreat(piece, moves) {
+      const dir = piece.team === TEAMS.PLAYER ? 1 : -1;
+      const nc = piece.col;
+      const nr = piece.row + dir;
+      if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) return moves;
+      if (moves.some((m) => m.col === nc && m.row === nr)) return moves;
+      const tile = this.board.getTile(nc, nr);
+      if (!tile || !tile.isPassable()) return moves;
+      if (tile.hasPiece()) {
+        if (tile.piece.team !== piece.team) {
+          moves.push({ col: nc, row: nr, type: "capture" });
+        }
+      } else {
+        moves.push({ col: nc, row: nr, type: "move" });
+      }
+      return moves;
+    }
+    _addDiagonalSlip(piece, moves) {
+      const offsets = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+      for (const [dc, dr] of offsets) {
+        const nc = piece.col + dc;
+        const nr = piece.row + dr;
+        if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) continue;
+        if (moves.some((m) => m.col === nc && m.row === nr)) continue;
+        const tile = this.board.getTile(nc, nr);
+        if (!tile || !tile.isPassable()) continue;
+        if (tile.hasPiece()) {
+          if (tile.piece.team !== piece.team) {
+            moves.push({ col: nc, row: nr, type: "capture" });
+          }
+        } else {
+          moves.push({ col: nc, row: nr, type: "move" });
+        }
+      }
+      return moves;
+    }
+    _addForwardCapture(piece, moves) {
+      const dir = piece.team === TEAMS.PLAYER ? -1 : 1;
+      const nc = piece.col;
+      const nr = piece.row + dir;
+      if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) return moves;
+      if (moves.some((m) => m.col === nc && m.row === nr && m.type === "capture")) return moves;
+      const tile = this.board.getTile(nc, nr);
+      if (tile && tile.hasPiece() && tile.piece.team !== piece.team) {
+        moves = moves.filter((m) => !(m.col === nc && m.row === nr && m.type === "move"));
+        moves.push({ col: nc, row: nr, type: "capture" });
+      }
+      return moves;
+    }
+    _flagRangedCaptures(piece, moves) {
+      return moves.map((m) => {
+        if (m.type === "capture") {
+          return { ...m, ranged: true };
+        }
+        return m;
+      });
+    }
+    _addLeapOverMoves(piece, moves) {
+      const slideDirs = this._getSlidingDirections(piece);
+      if (slideDirs.length === 0) return moves;
+      for (const [dc, dr] of slideDirs) {
         let nc = piece.col + dc;
         let nr = piece.row + dr;
         let leaped = false;
         while (isInBounds(nc, nr, this.board.cols, this.board.rows)) {
           const tile = this.board.getTile(nc, nr);
-          if (!tile.isPassable()) break;
+          if (!tile || !tile.isPassable()) break;
           if (tile.hasPiece()) {
-            if (!leaped && tile.piece.team === piece.team) {
+            if (!leaped) {
               leaped = true;
               nc += dc;
               nr += dr;
@@ -5395,109 +6154,143 @@
       }
       return moves;
     }
-    addPawnForwardCapture(piece, moves) {
-      const dir = piece.team === TEAMS.PLAYER ? -1 : 1;
-      const nc = piece.col;
-      const nr = piece.row + dir;
-      if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) return moves;
-      const tile = this.board.getTile(nc, nr);
-      if (tile.hasPiece() && tile.piece.team !== piece.team) {
-        if (!moves.some((m) => m.col === nc && m.row === nr)) {
-          moves.push({ col: nc, row: nr, type: "capture" });
-        }
-      }
-      return moves;
-    }
-    addRookJumpMoves(piece, moves) {
-      const directions = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-      for (const [dc, dr] of directions) {
-        let blocked = false;
-        let jumpCount = 0;
-        for (let dist = 1; dist < Math.max(this.board.cols, this.board.rows); dist++) {
-          const nc = piece.col + dc * dist;
-          const nr = piece.row + dr * dist;
-          if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) break;
+    _addPhasingMoves(piece, moves) {
+      const slideDirs = this._getSlidingDirections(piece);
+      if (slideDirs.length === 0) return moves;
+      for (const [dc, dr] of slideDirs) {
+        let nc = piece.col + dc;
+        let nr = piece.row + dr;
+        while (isInBounds(nc, nr, this.board.cols, this.board.rows)) {
           const tile = this.board.getTile(nc, nr);
-          if (!tile.isPassable()) break;
+          if (!tile || !tile.isPassable()) break;
           if (tile.hasPiece()) {
-            if (!blocked && dist <= 2) {
-              blocked = true;
-              jumpCount++;
-              if (jumpCount > 1) break;
-              continue;
-            }
-            if (blocked && tile.piece.team !== piece.team) {
+            if (tile.piece.team !== piece.team) {
               if (!moves.some((m) => m.col === nc && m.row === nr)) {
                 moves.push({ col: nc, row: nr, type: "capture" });
               }
             }
-            break;
+            nc += dc;
+            nr += dr;
+            continue;
           }
           if (!moves.some((m) => m.col === nc && m.row === nr)) {
+            moves.push({ col: nc, row: nr, type: "move" });
+          }
+          nc += dc;
+          nr += dr;
+        }
+      }
+      return moves;
+    }
+    _extendRange(piece, moves, extra) {
+      const extended = [];
+      for (const m of moves) {
+        const dc = m.col - piece.col;
+        const dr = m.row - piece.row;
+        if (dc === 0 && dr === 0) continue;
+        const ndx = Math.sign(dc);
+        const ndy = Math.sign(dr);
+        let curCol = m.col;
+        let curRow = m.row;
+        for (let i = 0; i < extra; i++) {
+          curCol += ndx;
+          curRow += ndy;
+          if (!isInBounds(curCol, curRow, this.board.cols, this.board.rows)) break;
+          if (moves.some((em) => em.col === curCol && em.row === curRow)) continue;
+          if (extended.some((em) => em.col === curCol && em.row === curRow)) continue;
+          const tile = this.board.getTile(curCol, curRow);
+          if (!tile || !tile.isPassable()) break;
+          if (tile.hasPiece()) {
+            if (tile.piece.team !== piece.team) {
+              extended.push({ col: curCol, row: curRow, type: "capture" });
+            }
+            break;
+          }
+          extended.push({ col: curCol, row: curRow, type: "move" });
+        }
+      }
+      return [...moves, ...extended];
+    }
+    _reduceRange(piece, moves, amount) {
+      const grouped = {};
+      for (const m of moves) {
+        const dc = Math.sign(m.col - piece.col);
+        const dr = Math.sign(m.row - piece.row);
+        const key = `${dc},${dr}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(m);
+      }
+      const result = [];
+      for (const key in grouped) {
+        const group = grouped[key].sort((a, b) => {
+          const da = Math.max(Math.abs(a.col - piece.col), Math.abs(a.row - piece.row));
+          const db = Math.max(Math.abs(b.col - piece.col), Math.abs(b.row - piece.row));
+          return da - db;
+        });
+        const keep = Math.max(1, group.length - amount);
+        result.push(...group.slice(0, keep));
+      }
+      return result;
+    }
+    _getSlidingDirections(piece) {
+      switch (piece.type) {
+        case PIECE_TYPES.ROOK:
+          return [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        case PIECE_TYPES.BISHOP:
+          return [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+        case PIECE_TYPES.QUEEN:
+          return [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+        default:
+          return [];
+      }
+    }
+    _getBaseMoves(piece) {
+      const moves = [];
+      const slideDirs = this._getSlidingDirections(piece);
+      for (const [dc, dr] of slideDirs) {
+        let nc = piece.col + dc;
+        let nr = piece.row + dr;
+        while (isInBounds(nc, nr, this.board.cols, this.board.rows)) {
+          const tile = this.board.getTile(nc, nr);
+          if (!tile || !tile.isPassable()) break;
+          if (tile.hasPiece()) {
+            if (tile.piece.team !== piece.team) {
+              moves.push({ col: nc, row: nr, type: "capture" });
+            }
+            break;
+          }
+          moves.push({ col: nc, row: nr, type: "move" });
+          nc += dc;
+          nr += dr;
+        }
+      }
+      if (piece.type === PIECE_TYPES.KNIGHT) {
+        const knightOffsets = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+        for (const [dc, dr] of knightOffsets) {
+          const nc = piece.col + dc;
+          const nr = piece.row + dr;
+          if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) continue;
+          const tile = this.board.getTile(nc, nr);
+          if (!tile || !tile.isPassable()) continue;
+          if (tile.hasPiece()) {
+            if (tile.piece.team !== piece.team) {
+              moves.push({ col: nc, row: nr, type: "capture" });
+            }
+          } else {
             moves.push({ col: nc, row: nr, type: "move" });
           }
         }
       }
       return moves;
     }
-    addInspiredMoves(piece, moves) {
-      return moves;
-    }
-    getModifiedMoves(piece, baseMoves) {
-      let moves = [...baseMoves];
-      for (const mod of piece.modifiers) {
-        moves = this.applyModifier(piece, moves, mod);
-      }
-      moves = this.applyRelicEffects(piece, moves);
-      if (piece.type !== PIECE_TYPES.KING) {
-        const king = this.board.getTeamPieces(piece.team).find(
-          (p) => p.type === PIECE_TYPES.KING && p.hasModifier("kingInspire")
-        );
-        if (king) {
-          const dx = Math.abs(piece.col - king.col);
-          const dy = Math.abs(piece.row - king.row);
-          if (dx <= 1 && dy <= 1) {
-            moves = this.extendMoveRange(piece, moves);
-          }
-        }
+    _applyRelicEffects(piece, moves) {
+      if (piece.type === PIECE_TYPES.PAWN && this.hasRelic("pawnForwardCapture") && !piece.hasModifier("forwardCapture")) {
+        moves = this._addForwardCapture(piece, moves);
       }
       return moves;
-    }
-    extendMoveRange(piece, moves) {
-      const extended = [];
-      for (const m of moves) {
-        const dc = m.col - piece.col;
-        const dr = m.row - piece.row;
-        const len = Math.max(Math.abs(dc), Math.abs(dr));
-        if (len === 0) continue;
-        const ndx = Math.sign(dc);
-        const ndy = Math.sign(dr);
-        const nc = m.col + ndx;
-        const nr = m.row + ndy;
-        if (!isInBounds(nc, nr, this.board.cols, this.board.rows)) continue;
-        if (moves.some((em) => em.col === nc && em.row === nr)) continue;
-        if (extended.some((em) => em.col === nc && em.row === nr)) continue;
-        const tile = this.board.getTile(nc, nr);
-        if (!tile || !tile.isPassable()) continue;
-        if (tile.hasPiece()) {
-          if (tile.piece.team !== piece.team) {
-            extended.push({ col: nc, row: nr, type: "capture" });
-          }
-        } else {
-          extended.push({ col: nc, row: nr, type: "move" });
-        }
-      }
-      return [...moves, ...extended];
     }
     hasRelic(id) {
       return this.relics.some((r) => r.id === id);
-    }
-    handlePostCapture(piece, capturedPiece) {
-      const results = { extraMove: false };
-      if (piece.hasModifier("bishopDoubleCapture") || piece.hasModifier("knightDoubleCapture")) {
-        results.extraMove = true;
-      }
-      return results;
     }
   };
 
@@ -5532,7 +6325,10 @@
       this.winner = null;
       this.relics = options.relics || [];
       this.armyAbility = options.armyAbility || null;
-      this.modifierSystem = new ModifierSystem(board, this.relics);
+      this.modifierSystem = new ModifierSystem(board, this.relics, this.turnManager);
+      this.modifierSystem.resetBattleState();
+      this.captureResolver.modifierSystem = this.modifierSystem;
+      if (options.rng) this.captureResolver.rng = options.rng;
       this.ai.modifierSystem = this.modifierSystem;
       this.ai.relics = this.relics;
       this.ai.turnManager = this.turnManager;
@@ -5585,7 +6381,40 @@
         if (!this.captureResolver.canCapture(piece, toCol, toRow)) {
           return { success: false, reason: "protected" };
         }
+        const isRanged = moveData.ranged || false;
         captured = this.captureResolver.resolveCapture(piece, target);
+        if (!captured) {
+          if (!isRanged) {
+          }
+          const result2 = {
+            success: true,
+            piece,
+            from: { col: fromCol, row: fromRow },
+            to: { col: fromCol, row: fromRow },
+            captured: null,
+            promoted: false,
+            extraTurn: false,
+            gamblerSurvived: true
+          };
+          piece.moveCount++;
+          this.turnManager.onNonCapture();
+          return result2;
+        }
+        if (isRanged) {
+          piece.moveCount++;
+          const result2 = {
+            success: true,
+            piece,
+            from: { col: fromCol, row: fromRow },
+            to: { col: fromCol, row: fromRow },
+            captured,
+            promoted: false,
+            extraTurn: false,
+            rangedCapture: true
+          };
+          this._handlePostCaptureEffects(piece, captured, result2, fromCol, fromRow);
+          return result2;
+        }
       }
       const fromTile = this.board.getTile(fromCol, fromRow);
       const toTile = this.board.getTile(toCol, toRow);
@@ -5603,34 +6432,11 @@
         extraTurn: false
       };
       if (captured) {
-        if (piece.team === TEAMS.PLAYER) {
-          this.capturedByPlayer.push(captured);
-          this.goldEarned += this.captureResolver.getGoldValue(captured);
-        } else {
-          this.capturedByEnemy.push(captured);
-        }
-        this.turnManager.onCapture();
-        if (captured.type === PIECE_TYPES.KING) {
-          this.endBattle(piece.team);
-          result.kingCaptured = true;
-          return result;
-        }
-        if (this.hasRelic("captureStreak") && this.turnManager.getConsecutiveCaptures() >= 3) {
-          this.turnManager.grantExtraTurn(1);
-          result.extraTurn = true;
-          this.turnManager.consecutiveCaptures = 0;
-        }
-        if (this.modifierSystem) {
-          const postCapture = this.modifierSystem.handlePostCapture(piece, captured);
-          if (postCapture.extraMove) {
-            this.turnManager.grantExtraTurn(1);
-            result.extraTurn = true;
-          }
-        }
+        this._handlePostCaptureEffects(piece, captured, result, fromCol, fromRow);
       } else {
         this.turnManager.onNonCapture();
       }
-      const landedTile = this.board.getTile(toCol, toRow);
+      const landedTile = this.board.getTile(piece.col, piece.row);
       if (landedTile.terrain === TERRAIN_TYPES.BRAMBLE) {
         piece.isFrozen = true;
       }
@@ -5652,6 +6458,63 @@
       }
       return result;
     }
+    _handlePostCaptureEffects(piece, captured, result, fromCol, fromRow) {
+      if (piece.team === TEAMS.PLAYER) {
+        this.capturedByPlayer.push(captured);
+        this.goldEarned += this.captureResolver.getGoldValue(captured);
+      } else {
+        this.capturedByEnemy.push(captured);
+      }
+      this.turnManager.onCapture();
+      if (this.modifierSystem) {
+        this.modifierSystem.onCapture(piece);
+      }
+      if (captured.type === PIECE_TYPES.KING) {
+        this.endBattle(piece.team);
+        result.kingCaptured = true;
+        return;
+      }
+      if (this.hasRelic("captureStreak") && this.turnManager.getConsecutiveCaptures() >= 3) {
+        this.turnManager.grantExtraTurn(1);
+        result.extraTurn = true;
+        this.turnManager.consecutiveCaptures = 0;
+      }
+      if (this.modifierSystem) {
+        const postCapture = this.modifierSystem.handlePostCapture(piece, captured);
+        if (postCapture.extraMove) {
+          this.turnManager.grantExtraTurn(1);
+          result.extraTurn = true;
+        }
+        if (postCapture.returnToStart) {
+          result.captureRetreat = true;
+          result.retreatTo = { col: fromCol, row: fromRow };
+          const curTile = this.board.getTile(piece.col, piece.row);
+          const startTile = this.board.getTile(fromCol, fromRow);
+          if (startTile && startTile.isEmpty()) {
+            curTile.removePiece();
+            startTile.setPiece(piece);
+          }
+        }
+        if (postCapture.explode && postCapture.adjacentEnemies.length > 0) {
+          result.explosiveCapture = true;
+          const removed = this.captureResolver.resolveExplosion(piece, postCapture.adjacentEnemies);
+          result.explosionVictims = removed;
+          for (const enemy of removed) {
+            if (piece.team === TEAMS.PLAYER) {
+              this.capturedByPlayer.push(enemy);
+              this.goldEarned += this.captureResolver.getGoldValue(enemy);
+            } else {
+              this.capturedByEnemy.push(enemy);
+            }
+            if (enemy.type === PIECE_TYPES.KING) {
+              this.endBattle(piece.team);
+              result.kingCaptured = true;
+              return;
+            }
+          }
+        }
+      }
+    }
     applyIceSlide(piece, dx, dy) {
       if (dx === 0 && dy === 0) return null;
       const dirCol = dx === 0 ? 0 : dx > 0 ? 1 : -1;
@@ -5672,6 +6535,9 @@
       this.eventBus.emit("piecePromoted", { piece, newType });
     }
     endTurn() {
+      if (this.modifierSystem) {
+        this.modifierSystem.consumeRally();
+      }
       const currentPieces = this.board.getTeamPieces(this.turnManager.currentTeam);
       for (const p of currentPieces) {
         if (p.isFrozen) p.isFrozen = false;
@@ -6042,8 +6908,8 @@
           const minRow = Math.min(...playerPawns.map((p) => p.row));
           const frontPawns = playerPawns.filter((p) => p.row <= minRow + 1);
           for (const pawn of frontPawns) {
-            if (!pawn.hasModifier("firstTurnProtection")) {
-              pawn.addModifier({ id: "firstTurnProtection", type: "protection", name: "Opening Guard" });
+            if (!pawn.hasModifier("firstTurnShield")) {
+              pawn.addModifier({ id: "firstTurnShield", category: "defense", rarity: "common", name: "Opening Guard", shortDescription: "Immune turns 1-2" });
             }
           }
         }
@@ -6820,6 +7686,8 @@
       this.hoverIndex = -1;
       this.message = "";
       this.messageTimer = 0;
+      this.pendingModifier = null;
+      this.validPieces = [];
       this.bindInput();
     }
     exit() {
@@ -6895,7 +7763,12 @@
     }
     handleKey(data) {
       if (data.code === "Escape") {
-        this.stateMachine.change("map");
+        if (this.pendingModifier) {
+          this.pendingModifier = null;
+          this.validPieces = [];
+        } else {
+          this.stateMachine.change("map");
+        }
       }
     }
     purchaseItem(item) {
@@ -6904,11 +7777,9 @@
         return;
       }
       if (item.category === "modifier") {
-        const valid = this.runManager.roster.filter(
-          (p) => item.validPieces && item.validPieces.includes(p.type) && !p.hasModifier(item.id)
-        );
+        const valid = this.runManager.roster.filter((p) => !p.hasModifier(item.id));
         if (valid.length === 0) {
-          this.showMessage("No valid pieces for this modifier!");
+          this.showMessage("All pieces already have this modifier!");
           return;
         }
         const success2 = this.runManager.purchaseShopItem(item);
@@ -6969,7 +7840,7 @@
           glow: isHover && canAfford,
           fill: isHover ? "#1a1a28" : UI_COLORS.panel
         });
-        const catColor = item.category === "relic" ? UI_COLORS.gold : item.category === "modifier" ? UI_COLORS.info : UI_COLORS.textDim;
+        const catColor = item.category === "relic" ? UI_COLORS.gold : item.category === "modifier" ? RARITY_COLORS[item.rarity] || UI_COLORS.info : UI_COLORS.textDim;
         ctx.beginPath();
         UITheme.roundRect(ctx, b.x + 1, b.y + 1, b.w - 2, 2, 1);
         ctx.fillStyle = catColor;
@@ -6987,7 +7858,7 @@
           ctx.fillText(item.category === "relic" ? "\u2605" : "\u25C6", b.x + b.w / 2, b.y + 36);
         }
         ctx.font = "bold 11px monospace";
-        ctx.fillStyle = UI_COLORS.text;
+        ctx.fillStyle = item.category === "modifier" ? RARITY_COLORS[item.rarity] || UI_COLORS.text : UI_COLORS.text;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(item.name, b.x + b.w / 2, b.y + 68);
@@ -7297,13 +8168,13 @@
         case "randomModifier": {
           const mod = getRandomModifier(rng);
           if (mod) {
-            const validPieces = rm.roster.filter((p) => mod.validPieces.includes(p.type));
+            const validPieces = rm.roster.filter((p) => !p.hasModifier(mod.id));
             if (validPieces.length > 0) {
               const target = rng.randomChoice(validPieces);
               target.addModifier({ ...mod });
               this.result = `Found ${mod.name} for your ${target.type}!`;
             } else {
-              this.result = `Found ${mod.name}, but no valid pieces to apply it to.`;
+              this.result = `Found ${mod.name}, but all pieces already have it.`;
             }
           }
           break;
@@ -7338,12 +8209,12 @@
         case "trainModifier": {
           const mod = getRandomModifier(rng);
           if (mod) {
-            const valid = rm.roster.filter((p) => mod.validPieces.includes(p.type));
+            const valid = rm.roster.filter((p) => !p.hasModifier(mod.id));
             if (valid.length > 0) {
               rng.randomChoice(valid).addModifier({ ...mod });
               this.result = `Training complete! Gained ${mod.name}.`;
             } else {
-              this.result = "No valid pieces to train.";
+              this.result = "All pieces already have this modifier.";
             }
           }
           break;
@@ -7452,12 +8323,8 @@
             { type: PIECE_TYPES.KING, col: 4, row: 0 },
             { type: PIECE_TYPES.BISHOP, col: 2, row: 0 },
             { type: PIECE_TYPES.BISHOP, col: 5, row: 0 },
-            { type: PIECE_TYPES.BISHOP, col: 3, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 1, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 2, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 4, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 5, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 6, row: 1 }
+            { type: PIECE_TYPES.PAWN, col: 3, row: 1 },
+            { type: PIECE_TYPES.PAWN, col: 5, row: 1 }
           ],
           terrain: [
             { col: 0, row: 3, terrain: TERRAIN_TYPES.VOID },
@@ -7477,7 +8344,7 @@
             { col: 6, row: 4, terrain: TERRAIN_TYPES.BRAMBLE }
           ],
           triggerCondition: "piecesRemaining",
-          triggerValue: 5
+          triggerValue: 3
         }
       ],
       goldReward: 40,
@@ -7496,19 +8363,13 @@
             { type: PIECE_TYPES.KING, col: 5, row: 0 },
             { type: PIECE_TYPES.QUEEN, col: 4, row: 0 },
             { type: PIECE_TYPES.ROOK, col: 1, row: 0 },
-            { type: PIECE_TYPES.ROOK, col: 8, row: 0 },
             { type: PIECE_TYPES.BISHOP, col: 3, row: 0 },
             { type: PIECE_TYPES.BISHOP, col: 6, row: 0 },
             { type: PIECE_TYPES.KNIGHT, col: 2, row: 0 },
             { type: PIECE_TYPES.KNIGHT, col: 7, row: 0 },
-            { type: PIECE_TYPES.PAWN, col: 1, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 2, row: 1 },
             { type: PIECE_TYPES.PAWN, col: 3, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 4, row: 1 },
             { type: PIECE_TYPES.PAWN, col: 5, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 6, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 7, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 8, row: 1 }
+            { type: PIECE_TYPES.PAWN, col: 7, row: 1 }
           ],
           terrain: [
             { col: 0, row: 4, terrain: TERRAIN_TYPES.VOID },
@@ -7522,10 +8383,8 @@
         {
           name: "Phase 2: Reinforcements",
           addPieces: [
-            { type: PIECE_TYPES.KNIGHT, col: 0, row: 0 },
-            { type: PIECE_TYPES.KNIGHT, col: 9, row: 0 },
-            { type: PIECE_TYPES.PAWN, col: 0, row: 1 },
-            { type: PIECE_TYPES.PAWN, col: 9, row: 1 }
+            { type: PIECE_TYPES.ROOK, col: 8, row: 0 },
+            { type: PIECE_TYPES.PAWN, col: 0, row: 1 }
           ],
           addTerrain: [
             { col: 2, row: 5, terrain: TERRAIN_TYPES.ICE },
@@ -7541,7 +8400,7 @@
         {
           name: "Phase 3: Last Stand",
           addPieces: [
-            { type: PIECE_TYPES.QUEEN, col: 4, row: 1 }
+            { type: PIECE_TYPES.KNIGHT, col: 4, row: 1 }
           ],
           addTerrain: [
             { col: 3, row: 3, terrain: TERRAIN_TYPES.BRAMBLE },
@@ -8261,6 +9120,517 @@
     }
   };
 
+  // src/states/UpgradeState.js
+  var CATEGORY_LABELS = {
+    movement: "Movement",
+    capture: "Capture",
+    defense: "Defense",
+    aura: "Aura",
+    risk: "Risk"
+  };
+  var CARD_FLIP_DURATION = 0.35;
+  var CARD_STAGGER = 0.25;
+  var PARTICLE_LIFETIME = 0.8;
+  var RARITY_FX = {
+    common: { particles: 0, flash: 0 },
+    uncommon: { particles: 8, flash: 0.04 },
+    rare: { particles: 16, flash: 0.08 },
+    legendary: { particles: 30, flash: 0.15 }
+  };
+  var UpgradeState = class {
+    constructor() {
+      this.stateMachine = null;
+      this.eventBus = null;
+      this.renderer = null;
+      this.runManager = null;
+      this.audioManager = null;
+      this.phase = "pick";
+      this.choices = [];
+      this.selectedMod = null;
+      this.hoverIndex = -1;
+      this.hoverPieceIndex = -1;
+      this.hoverSkip = false;
+      this.nextState = "map";
+      this.nextParams = {};
+      this.source = "";
+      this.revealTime = 0;
+      this.cardRevealed = [false, false, false];
+      this.particles = [];
+      this.screenFlash = 0;
+      this.bestRarity = "common";
+      this.clickHandler = null;
+      this.moveHandler = null;
+      this.keyHandler = null;
+    }
+    enter(params = {}) {
+      this.nextState = params.nextState || "map";
+      this.nextParams = params.nextParams || {};
+      this.source = params.source || "";
+      this.phase = "pick";
+      this.selectedMod = null;
+      this.hoverIndex = -1;
+      this.hoverPieceIndex = -1;
+      this.hoverSkip = false;
+      this.revealTime = 0;
+      this.cardRevealed = [false, false, false];
+      this.particles = [];
+      this.screenFlash = 0;
+      const rng = this.runManager.rng;
+      const rosterTypes = this.runManager.roster.map((p) => p.type);
+      this.choices = getUpgradePackChoices(rng, [], 3, rosterTypes);
+      const order = ["legendary", "rare", "uncommon", "common"];
+      this.bestRarity = "common";
+      for (const r of order) {
+        if (this.choices.some((c) => c.rarity === r)) {
+          this.bestRarity = r;
+          break;
+        }
+      }
+      this.bindInput();
+    }
+    exit() {
+      if (this.clickHandler) this.eventBus.off("click", this.clickHandler);
+      if (this.moveHandler) this.eventBus.off("mousemove", this.moveHandler);
+      if (this.keyHandler) this.eventBus.off("keydown", this.keyHandler);
+    }
+    bindInput() {
+      this.clickHandler = (data) => this.handleClick(data);
+      this.moveHandler = (data) => this.handleMove(data);
+      this.keyHandler = (data) => this.handleKey(data);
+      this.eventBus.on("click", this.clickHandler);
+      this.eventBus.on("mousemove", this.moveHandler);
+      this.eventBus.on("keydown", this.keyHandler);
+    }
+    // === BOUNDS ===
+    getCardBounds() {
+      const cardW = 160;
+      const cardH = 220;
+      const gap = 18;
+      const count = this.choices.length;
+      const totalW = count * (cardW + gap) - gap;
+      const startX = (this.renderer.width - totalW) / 2;
+      const y = this.renderer.height / 2 - cardH / 2 + 10;
+      return this.choices.map((_, i) => ({
+        x: startX + i * (cardW + gap),
+        y,
+        w: cardW,
+        h: cardH
+      }));
+    }
+    getSkipButton() {
+      const bw = 100;
+      const bh = 34;
+      return { x: (this.renderer.width - bw) / 2, y: this.renderer.height - 65, w: bw, h: bh };
+    }
+    getPieceBounds() {
+      const roster = this.runManager.roster;
+      const btnW = 64;
+      const btnH = 80;
+      const gap = 10;
+      const perRow = Math.min(roster.length, 8);
+      const rows = Math.ceil(roster.length / perRow);
+      const totalW = perRow * (btnW + gap) - gap;
+      const startX = (this.renderer.width - totalW) / 2;
+      const startY = this.renderer.height / 2 - (rows * (btnH + gap) - gap) / 2 + 20;
+      return roster.map((piece, i) => {
+        const row = Math.floor(i / perRow);
+        const col = i % perRow;
+        return {
+          piece,
+          x: startX + col * (btnW + gap),
+          y: startY + row * (btnH + gap),
+          w: btnW,
+          h: btnH
+        };
+      });
+    }
+    isCardRevealed(index) {
+      const delay = index * CARD_STAGGER;
+      return this.revealTime >= delay + CARD_FLIP_DURATION;
+    }
+    allCardsRevealed() {
+      return this.choices.every((_, i) => this.isCardRevealed(i));
+    }
+    // === INPUT ===
+    handleClick(data) {
+      if (this.phase === "pick") {
+        if (!this.allCardsRevealed()) return;
+        const bounds = this.getCardBounds();
+        for (let i = 0; i < bounds.length; i++) {
+          const b = bounds[i];
+          if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+            this.selectedMod = this.choices[i];
+            this.phase = "assign";
+            this.hoverPieceIndex = -1;
+            return;
+          }
+        }
+        const skip = this.getSkipButton();
+        if (data.x >= skip.x && data.x <= skip.x + skip.w && data.y >= skip.y && data.y <= skip.y + skip.h) {
+          this.finish();
+          return;
+        }
+      } else if (this.phase === "assign") {
+        const pieceBounds = this.getPieceBounds();
+        for (let i = 0; i < pieceBounds.length; i++) {
+          const b = pieceBounds[i];
+          if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+            if (!b.piece.hasModifier(this.selectedMod.id)) {
+              b.piece.addModifier({ ...this.selectedMod });
+              this.finish();
+            }
+            return;
+          }
+        }
+      }
+    }
+    handleMove(data) {
+      this.hoverIndex = -1;
+      this.hoverPieceIndex = -1;
+      this.hoverSkip = false;
+      if (this.phase === "pick") {
+        if (this.allCardsRevealed()) {
+          const bounds = this.getCardBounds();
+          for (let i = 0; i < bounds.length; i++) {
+            const b = bounds[i];
+            if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+              this.hoverIndex = i;
+              break;
+            }
+          }
+          const skip = this.getSkipButton();
+          if (data.x >= skip.x && data.x <= skip.x + skip.w && data.y >= skip.y && data.y <= skip.y + skip.h) {
+            this.hoverSkip = true;
+          }
+        }
+      } else if (this.phase === "assign") {
+        const pieceBounds = this.getPieceBounds();
+        for (let i = 0; i < pieceBounds.length; i++) {
+          const b = pieceBounds[i];
+          if (data.x >= b.x && data.x <= b.x + b.w && data.y >= b.y && data.y <= b.y + b.h) {
+            this.hoverPieceIndex = i;
+            break;
+          }
+        }
+      }
+    }
+    handleKey(data) {
+      if (data.code === "Escape") {
+        if (this.phase === "assign") {
+          this.phase = "pick";
+          this.selectedMod = null;
+        } else {
+          this.finish();
+        }
+      }
+    }
+    finish() {
+      this.stateMachine.change(this.nextState, this.nextParams);
+    }
+    // === PARTICLES ===
+    _spawnParticles(cx, cy, count, color) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.PI * 2 / count * i + (Math.random() - 0.5) * 0.8;
+        const speed = 40 + Math.random() * 80;
+        this.particles.push({
+          x: cx,
+          y: cy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 30,
+          life: PARTICLE_LIFETIME + Math.random() * 0.3,
+          maxLife: PARTICLE_LIFETIME + Math.random() * 0.3,
+          color,
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+    _updateParticles(dt) {
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const p = this.particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 60 * dt;
+        p.life -= dt;
+        if (p.life <= 0) {
+          this.particles.splice(i, 1);
+        }
+      }
+    }
+    _renderParticles(ctx) {
+      for (const p of this.particles) {
+        const alpha = Math.max(0, p.life / p.maxLife);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        const s = p.size * alpha;
+        ctx.moveTo(p.x, p.y - s);
+        ctx.lineTo(p.x + s * 0.7, p.y);
+        ctx.lineTo(p.x, p.y + s);
+        ctx.lineTo(p.x - s * 0.7, p.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    // === UPDATE ===
+    update(dt) {
+      if (this.phase === "pick") {
+        this.revealTime += dt;
+        for (let i = 0; i < this.choices.length; i++) {
+          if (!this.cardRevealed[i] && this.isCardRevealed(i)) {
+            this.cardRevealed[i] = true;
+            this._onCardRevealed(i);
+          }
+        }
+      }
+      this._updateParticles(dt);
+      if (this.screenFlash > 0) {
+        this.screenFlash = Math.max(0, this.screenFlash - dt * 1.5);
+      }
+    }
+    _onCardRevealed(index) {
+      const mod = this.choices[index];
+      const fx = RARITY_FX[mod.rarity] || RARITY_FX.common;
+      const bounds = this.getCardBounds();
+      const b = bounds[index];
+      const cx = b.x + b.w / 2;
+      const cy = b.y + b.h / 2;
+      const color = RARITY_COLORS[mod.rarity] || "#888";
+      if (fx.particles > 0) {
+        this._spawnParticles(cx, cy, fx.particles, color);
+      }
+      if (fx.flash > 0) {
+        this.screenFlash = Math.max(this.screenFlash, fx.flash);
+      }
+      if (this.audioManager) {
+        if (mod.rarity === "legendary") {
+          this.audioManager.playSFX("victory");
+        } else if (mod.rarity === "rare") {
+          this.audioManager.playSFX("capture");
+        }
+      }
+    }
+    // === RENDER ===
+    render(ctx) {
+      const w = this.renderer.width;
+      const h = this.renderer.height;
+      UITheme.drawBackground(ctx, w, h);
+      UITheme.drawVignette(ctx, w, h, 0.4);
+      if (this.phase === "pick") {
+        this.renderPickPhase(ctx, w, h);
+      } else {
+        this.renderAssignPhase(ctx, w, h);
+      }
+      this._renderParticles(ctx);
+      if (this.screenFlash > 0) {
+        const flashColor = RARITY_COLORS[this.bestRarity] || "#fff";
+        ctx.fillStyle = flashColor;
+        ctx.globalAlpha = this.screenFlash;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = 1;
+      }
+    }
+    renderPickPhase(ctx, w, h) {
+      const title = this.source === "draft" ? "Starting Upgrade" : "Choose an Upgrade";
+      UITheme.drawTitle(ctx, title, w / 2, 50, 26);
+      ctx.font = "12px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Pick a modifier to apply to one of your pieces", w / 2, 82);
+      UITheme.drawDivider(ctx, w / 2 - 130, 100, 260);
+      const bounds = this.getCardBounds();
+      for (let i = 0; i < this.choices.length; i++) {
+        const mod = this.choices[i];
+        const b = bounds[i];
+        const delay = i * CARD_STAGGER;
+        const elapsed = this.revealTime - delay;
+        if (elapsed < 0) {
+          this._drawCardPlaceholder(ctx, b);
+          continue;
+        }
+        if (elapsed < CARD_FLIP_DURATION) {
+          this._drawCardFlipping(ctx, b, mod, elapsed / CARD_FLIP_DURATION);
+          continue;
+        }
+        const isHover = this.hoverIndex === i;
+        const liftY = isHover ? -6 : 0;
+        this._drawRevealedCard(ctx, { ...b, y: b.y + liftY }, mod, isHover);
+      }
+      if (this.allCardsRevealed()) {
+        const skip = this.getSkipButton();
+        UITheme.drawButton(ctx, skip.x, skip.y, skip.w, skip.h, "Skip", this.hoverSkip, {
+          fontSize: 12,
+          textColor: UI_COLORS.textDim
+        });
+      }
+    }
+    _drawCardPlaceholder(ctx, b) {
+      UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
+        fill: "#0e0e14",
+        border: UI_COLORS.panelBorder + "40"
+      });
+      ctx.font = "bold 32px monospace";
+      ctx.fillStyle = UI_COLORS.panelBorder;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("?", b.x + b.w / 2, b.y + b.h / 2);
+    }
+    _drawCardFlipping(ctx, b, mod, progress) {
+      const scaleX = Math.abs(Math.cos(progress * Math.PI));
+      const showFront = progress >= 0.5;
+      const cx = b.x + b.w / 2;
+      ctx.save();
+      ctx.translate(cx, 0);
+      ctx.scale(scaleX, 1);
+      ctx.translate(-cx, 0);
+      if (showFront) {
+        const fadeIn = (progress - 0.5) * 2;
+        ctx.globalAlpha = 0.5 + fadeIn * 0.5;
+        this._drawRevealedCard(ctx, b, mod, false);
+        ctx.globalAlpha = 1;
+      } else {
+        UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
+          fill: "#0e0e14",
+          border: UI_COLORS.panelBorder
+        });
+        const rarityColor = RARITY_COLORS[mod.rarity] || UI_COLORS.panelBorder;
+        ctx.strokeStyle = rarityColor;
+        ctx.globalAlpha = 0.15;
+        ctx.lineWidth = 1;
+        const midX = b.x + b.w / 2;
+        const midY = b.y + b.h / 2;
+        for (let d = 20; d <= 70; d += 25) {
+          ctx.beginPath();
+          ctx.moveTo(midX, midY - d);
+          ctx.lineTo(midX + d * 0.5, midY);
+          ctx.lineTo(midX, midY + d);
+          ctx.lineTo(midX - d * 0.5, midY);
+          ctx.closePath();
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.font = "bold 32px monospace";
+        ctx.fillStyle = rarityColor;
+        ctx.globalAlpha = 0.25;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("?", midX, midY);
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+    }
+    _drawRevealedCard(ctx, b, mod, isHover) {
+      const rarityColor = RARITY_COLORS[mod.rarity] || UI_COLORS.textDim;
+      if (isHover) {
+        ctx.save();
+        ctx.shadowColor = rarityColor;
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = "rgba(0,0,0,0.01)";
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.restore();
+      }
+      UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
+        highlight: isHover,
+        glow: isHover,
+        fill: isHover ? "#1a1a28" : UI_COLORS.panel
+      });
+      ctx.beginPath();
+      UITheme.roundRect(ctx, b.x + 1, b.y + 1, b.w - 2, 3, 2);
+      ctx.fillStyle = rarityColor;
+      ctx.globalAlpha = isHover ? 0.9 : 0.5;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      const iconY = b.y + 35;
+      ctx.save();
+      if (isHover) {
+        ctx.shadowColor = rarityColor;
+        ctx.shadowBlur = 10;
+      }
+      ctx.fillStyle = rarityColor;
+      ctx.beginPath();
+      ctx.moveTo(b.x + b.w / 2, iconY - 12);
+      ctx.lineTo(b.x + b.w / 2 + 8, iconY);
+      ctx.lineTo(b.x + b.w / 2, iconY + 12);
+      ctx.lineTo(b.x + b.w / 2 - 8, iconY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = rarityColor;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(mod.name, b.x + b.w / 2, b.y + 68);
+      ctx.font = "9px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.fillText(CATEGORY_LABELS[mod.category] || mod.category, b.x + b.w / 2, b.y + 84);
+      ctx.font = "10px monospace";
+      ctx.fillStyle = UI_COLORS.text;
+      ctx.globalAlpha = 0.85;
+      UITheme.wrapText(ctx, mod.description, b.x + b.w / 2, b.y + 106, b.w - 22, 14);
+      ctx.globalAlpha = 1;
+      ctx.font = "9px monospace";
+      ctx.fillStyle = rarityColor;
+      ctx.globalAlpha = 0.7;
+      ctx.fillText(mod.rarity.toUpperCase(), b.x + b.w / 2, b.y + b.h - 16);
+      ctx.globalAlpha = 1;
+    }
+    renderAssignPhase(ctx, w, h) {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(0, 0, w, h);
+      const rarityColor = RARITY_COLORS[this.selectedMod.rarity] || UI_COLORS.text;
+      UITheme.drawTitle(ctx, `Apply: ${this.selectedMod.name}`, w / 2, 50, 22);
+      ctx.font = "11px monospace";
+      ctx.fillStyle = rarityColor;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(this.selectedMod.shortDescription, w / 2, 80);
+      ctx.font = "12px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.fillText("Select a piece to receive this upgrade", w / 2, 105);
+      const pieceBounds = this.getPieceBounds();
+      for (let i = 0; i < pieceBounds.length; i++) {
+        const b = pieceBounds[i];
+        const piece = b.piece;
+        const hasMod = piece.hasModifier(this.selectedMod.id);
+        const isHover = this.hoverPieceIndex === i;
+        UITheme.drawPanel(ctx, b.x, b.y, b.w, b.h, {
+          radius: 6,
+          shadow: false,
+          highlight: isHover && !hasMod,
+          glow: isHover && !hasMod,
+          fill: hasMod ? "#0e0e12" : isHover ? "#1a1a28" : UI_COLORS.panel
+        });
+        if (hasMod) {
+          ctx.globalAlpha = 0.3;
+        }
+        PieceRenderer.draw(ctx, piece, b.x + (b.w - 40) / 2, b.y + 4, 40);
+        ctx.globalAlpha = 1;
+        ctx.font = "9px monospace";
+        ctx.fillStyle = hasMod ? UI_COLORS.textDim + "60" : UI_COLORS.text;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(piece.type, b.x + b.w / 2, b.y + 52);
+        if (piece.modifiers.length > 0) {
+          ctx.font = "8px monospace";
+          ctx.fillStyle = UI_COLORS.gold;
+          ctx.fillText(`${piece.modifiers.length} mod${piece.modifiers.length > 1 ? "s" : ""}`, b.x + b.w / 2, b.y + 64);
+        }
+        if (hasMod) {
+          ctx.font = "8px monospace";
+          ctx.fillStyle = UI_COLORS.textDim;
+          ctx.fillText("(has it)", b.x + b.w / 2, b.y + b.h - 8);
+        }
+      }
+      ctx.font = "10px monospace";
+      ctx.fillStyle = UI_COLORS.textDim;
+      ctx.textAlign = "center";
+      ctx.globalAlpha = 0.5;
+      ctx.fillText("Esc to go back", w / 2, h - 30);
+      ctx.globalAlpha = 1;
+    }
+  };
+
   // src/core/Game.js
   var Game = class {
     constructor(canvas2) {
@@ -8292,7 +9662,8 @@
         victory: new VictoryState(),
         gameOver: new GameOverState(),
         pause: new PauseState(),
-        settings: new SettingsState()
+        settings: new SettingsState(),
+        upgrade: new UpgradeState()
       };
       for (const [name, state] of Object.entries(states)) {
         state.renderer = this.renderer;
@@ -8314,7 +9685,11 @@
         if (data.victory) {
           const rewards = this.runManager.onBattleWon(data);
           this.saveManager.save(this.runManager.serialize());
-          this.stateMachine.change("map", { goldGained: data.goldEarned || 0 });
+          this.stateMachine.change("upgrade", {
+            nextState: "map",
+            nextParams: { goldGained: data.goldEarned || 0 },
+            source: "battle"
+          });
         } else {
           this.runManager.onBattleLost();
         }

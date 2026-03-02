@@ -132,8 +132,8 @@ export class CombatState {
                 const minRow = Math.min(...playerPawns.map(p => p.row));
                 const frontPawns = playerPawns.filter(p => p.row <= minRow + 1);
                 for (const pawn of frontPawns) {
-                    if (!pawn.hasModifier('firstTurnProtection')) {
-                        pawn.addModifier({ id: 'firstTurnProtection', type: 'protection', name: 'Opening Guard' });
+                    if (!pawn.hasModifier('firstTurnShield')) {
+                        pawn.addModifier({ id: 'firstTurnShield', category: 'defense', rarity: 'common', name: 'Opening Guard', shortDescription: 'Immune turns 1-2' });
                     }
                 }
             }

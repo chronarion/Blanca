@@ -92,3 +92,6 @@ export const ROSTER_LIMIT = 16;
 export const TOTAL_FLOORS = 10;
 export const BOSS_FLOORS = [5, 10];
 export const STARTING_GOLD = 0;
+
+export const DRAFT_POINTS = { easy: 20, normal: 14, hard: 8 };
+export const DRAFT_COSTS = { pawn: 1, knight: 2, bishop: 2, rook: 3, queen: 5 };

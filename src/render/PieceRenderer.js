@@ -1,4 +1,5 @@
 import { PIECE_TYPES, TEAMS } from '../data/Constants.js';
+import { RARITY_COLORS } from '../data/ModifierData.js';
 import { PieceSetLoader } from './PieceSetLoader.js';
 
 const PIECE_THEME = {
@@ -23,16 +24,54 @@ const PIECE_THEME = {
 };
 
 export class PieceRenderer {
+    static _getHighestRarityColor(modifiers) {
+        const order = ['legendary', 'rare', 'uncommon', 'common'];
+        for (const r of order) {
+            if (modifiers.some(m => m.rarity === r)) return RARITY_COLORS[r] || RARITY_COLORS.common;
+        }
+        return RARITY_COLORS.common;
+    }
+
+    static _drawModifierAura(ctx, center, scale, modifiers) {
+        const count = modifiers.length;
+        const color = this._getHighestRarityColor(modifiers);
+        const baseRadius = 22 * scale;
+        const glowAlpha = Math.min(0.5, 0.15 + count * 0.08);
+
+        // Outer glow ring
+        ctx.save();
+        const grad = ctx.createRadialGradient(center, center + 2 * scale, baseRadius * 0.6, center, center + 2 * scale, baseRadius * 1.3);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(0.6, 'rgba(0,0,0,0)');
+        grad.addColorStop(0.8, color + Math.round(glowAlpha * 255).toString(16).padStart(2, '0'));
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(center, center + 2 * scale, baseRadius * 1.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner ring outline
+        ctx.beginPath();
+        ctx.arc(center, center + 2 * scale, baseRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = glowAlpha * 0.8;
+        ctx.lineWidth = 1.5 * scale;
+        ctx.stroke();
+        ctx.restore();
+    }
+
     static draw(ctx, piece, x, y, size) {
         const t = piece.team === TEAMS.PLAYER ? PIECE_THEME.player : PIECE_THEME.enemy;
         const center = size / 2;
         const scale = size / 80;
+        const hasMods = piece.modifiers.length > 0;
 
         // Try image-based rendering first
         const img = PieceSetLoader.getImage(piece.team, piece.type);
         if (img) {
             ctx.save();
             ctx.translate(x, y);
+            if (hasMods) this._drawModifierAura(ctx, center, scale, piece.modifiers);
             // Drop shadow
             ctx.fillStyle = t.shadow;
             ctx.beginPath();
@@ -41,8 +80,8 @@ export class PieceRenderer {
             // Draw SVG image
             const pad = size * 0.05;
             ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
-            if (piece.modifiers.length > 0) {
-                this.drawModifierIndicator(ctx, size, scale, t);
+            if (hasMods) {
+                this.drawModifierIndicator(ctx, size, scale, t, piece.modifiers.length, piece.modifiers);
             }
             ctx.restore();
             return;
@@ -50,6 +89,9 @@ export class PieceRenderer {
 
         ctx.save();
         ctx.translate(x, y);
+
+        // Modifier aura (drawn behind piece)
+        if (hasMods) this._drawModifierAura(ctx, center, scale, piece.modifiers);
 
         // Drop shadow
         ctx.fillStyle = t.shadow;
@@ -66,8 +108,8 @@ export class PieceRenderer {
             case PIECE_TYPES.KING: this.drawKing(ctx, center, scale, t); break;
         }
 
-        if (piece.modifiers.length > 0) {
-            this.drawModifierIndicator(ctx, size, scale, t);
+        if (hasMods) {
+            this.drawModifierIndicator(ctx, size, scale, t, piece.modifiers.length, piece.modifiers);
         }
 
         ctx.restore();
@@ -436,16 +478,17 @@ export class PieceRenderer {
         this._drawBase(ctx, c, s, t);
     }
 
-    static drawModifierIndicator(ctx, size, s, t) {
-        const x = size - 4 * s;
-        const y = 4 * s;
-        const r = 3.5 * s;
+    static drawModifierIndicator(ctx, size, s, t, count = 1, modifiers = []) {
+        const x = size - 5 * s;
+        const y = 5 * s;
+        const r = 5 * s;
+        const color = modifiers.length > 0 ? this._getHighestRarityColor(modifiers) : t.accent;
 
         // Glow
         ctx.save();
-        ctx.shadowColor = t.accent;
-        ctx.shadowBlur = 6 * s;
-        ctx.fillStyle = t.accent;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 8 * s;
+        ctx.fillStyle = color;
         ctx.beginPath();
         // Diamond shape
         ctx.moveTo(x, y - r);
@@ -463,8 +506,15 @@ export class PieceRenderer {
         ctx.lineTo(x, y + r);
         ctx.lineTo(x - r * 0.7, y);
         ctx.closePath();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 0.5 * s;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 0.8 * s;
         ctx.stroke();
+
+        // Count number inside diamond
+        ctx.font = `bold ${Math.round(5.5 * s)}px monospace`;
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${count}`, x, y + 0.5 * s);
     }
 }

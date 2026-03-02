@@ -1,4 +1,5 @@
 import { UI_COLORS } from '../data/Constants.js';
+import { RARITY_COLORS } from '../data/ModifierData.js';
 import { PieceRenderer } from '../render/PieceRenderer.js';
 import { PIECE_NAMES } from '../data/PieceData.js';
 import { Panel } from './Panel.js';
@@ -7,7 +8,7 @@ export class PieceInfoPanel {
     constructor() {
         this.piece = null;
         this.visible = false;
-        this.panel = new Panel(0, 0, 200, 160, { title: 'Piece Info' });
+        this.panel = new Panel(0, 0, 210, 160, { title: 'Piece Info' });
     }
 
     show(piece, x, y) {
@@ -15,6 +16,12 @@ export class PieceInfoPanel {
         this.visible = true;
         this.panel.x = x;
         this.panel.y = y;
+
+        // Dynamic height based on modifiers
+        const baseH = 90;
+        const modH = piece.modifiers.length > 0 ? 20 + piece.modifiers.length * 28 : 0;
+        const promoH = piece.promotedFrom ? 16 : 0;
+        this.panel.h = baseH + modH + promoH;
     }
 
     hide() {
@@ -45,7 +52,7 @@ export class PieceInfoPanel {
 
         y += 44;
 
-        // Modifiers
+        // Modifiers with rarity colors and descriptions
         if (p.modifiers.length > 0) {
             ctx.font = 'bold 11px monospace';
             ctx.fillStyle = UI_COLORS.gold;
@@ -53,10 +60,21 @@ export class PieceInfoPanel {
             y += 16;
 
             for (const mod of p.modifiers) {
-                ctx.font = '10px monospace';
-                ctx.fillStyle = UI_COLORS.text;
-                ctx.fillText(`• ${mod.name || mod.id}`, x + 4, y);
-                y += 14;
+                const rarityColor = RARITY_COLORS[mod.rarity] || UI_COLORS.text;
+
+                // Modifier name in rarity color
+                ctx.font = 'bold 10px monospace';
+                ctx.fillStyle = rarityColor;
+                ctx.fillText(`\u25C6 ${mod.name || mod.id}`, x + 4, y);
+                y += 13;
+
+                // Short description
+                if (mod.shortDescription) {
+                    ctx.font = '9px monospace';
+                    ctx.fillStyle = UI_COLORS.textDim;
+                    ctx.fillText(`  ${mod.shortDescription}`, x + 4, y);
+                }
+                y += 15;
             }
         }
 

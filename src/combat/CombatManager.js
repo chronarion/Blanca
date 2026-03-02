@@ -42,8 +42,12 @@ export class CombatManager {
         this.relics = options.relics || [];
         this.armyAbility = options.armyAbility || null;
 
-        // Create modifier system and pass to AI
-        this.modifierSystem = new ModifierSystem(board, this.relics);
+        // Create modifier system with turnManager and wire to capture resolver
+        this.modifierSystem = new ModifierSystem(board, this.relics, this.turnManager);
+        this.modifierSystem.resetBattleState();
+        this.captureResolver.modifierSystem = this.modifierSystem;
+        if (options.rng) this.captureResolver.rng = options.rng;
+
         this.ai.modifierSystem = this.modifierSystem;
         this.ai.relics = this.relics;
         this.ai.turnManager = this.turnManager;
@@ -111,7 +115,51 @@ export class CombatManager {
             if (!this.captureResolver.canCapture(piece, toCol, toRow)) {
                 return { success: false, reason: 'protected' };
             }
+
+            // Ranged capture: don't move the attacker
+            const isRanged = moveData.ranged || false;
+
             captured = this.captureResolver.resolveCapture(piece, target);
+
+            // Gambler's Fate: capture could fail
+            if (!captured) {
+                // Piece survived, still count as a move
+                if (!isRanged) {
+                    // Attacker tried but failed; don't move to the square
+                }
+                const result = {
+                    success: true,
+                    piece,
+                    from: { col: fromCol, row: fromRow },
+                    to: { col: fromCol, row: fromRow },
+                    captured: null,
+                    promoted: false,
+                    extraTurn: false,
+                    gamblerSurvived: true,
+                };
+                piece.moveCount++;
+                this.turnManager.onNonCapture();
+                return result;
+            }
+
+            if (isRanged) {
+                // Don't move piece — stay in place
+                piece.moveCount++;
+
+                const result = {
+                    success: true,
+                    piece,
+                    from: { col: fromCol, row: fromRow },
+                    to: { col: fromCol, row: fromRow },
+                    captured,
+                    promoted: false,
+                    extraTurn: false,
+                    rangedCapture: true,
+                };
+
+                this._handlePostCaptureEffects(piece, captured, result, fromCol, fromRow);
+                return result;
+            }
         }
 
         // Move the piece
@@ -133,41 +181,13 @@ export class CombatManager {
         };
 
         if (captured) {
-            if (piece.team === TEAMS.PLAYER) {
-                this.capturedByPlayer.push(captured);
-                this.goldEarned += this.captureResolver.getGoldValue(captured);
-            } else {
-                this.capturedByEnemy.push(captured);
-            }
-            this.turnManager.onCapture();
-
-            if (captured.type === PIECE_TYPES.KING) {
-                this.endBattle(piece.team);
-                result.kingCaptured = true;
-                return result;
-            }
-
-            // Check 3-in-a-row capture relic
-            if (this.hasRelic('captureStreak') && this.turnManager.getConsecutiveCaptures() >= 3) {
-                this.turnManager.grantExtraTurn(1);
-                result.extraTurn = true;
-                this.turnManager.consecutiveCaptures = 0;
-            }
-
-            // Post-capture modifier effects (e.g. knight/bishop double capture)
-            if (this.modifierSystem) {
-                const postCapture = this.modifierSystem.handlePostCapture(piece, captured);
-                if (postCapture.extraMove) {
-                    this.turnManager.grantExtraTurn(1);
-                    result.extraTurn = true;
-                }
-            }
+            this._handlePostCaptureEffects(piece, captured, result, fromCol, fromRow);
         } else {
             this.turnManager.onNonCapture();
         }
 
         // Terrain effects
-        const landedTile = this.board.getTile(toCol, toRow);
+        const landedTile = this.board.getTile(piece.col, piece.row);
         if (landedTile.terrain === TERRAIN_TYPES.BRAMBLE) {
             piece.isFrozen = true;
         }
@@ -179,7 +199,6 @@ export class CombatManager {
         if (piece.type === PIECE_TYPES.PAWN) {
             const promoRow = piece.team === TEAMS.PLAYER ? 0 : this.board.rows - 1;
             let promoRank = promoRow;
-            // Check relic or army ability for early promotion
             if ((this.hasRelic('earlyPromotion') || this.armyAbility === 'earlyPromotion') && piece.team === TEAMS.PLAYER) {
                 promoRank = 1;
             }
@@ -188,13 +207,81 @@ export class CombatManager {
                 result.needsPromotion = true;
             }
 
-            // Altar terrain
             if (landedTile.terrain === TERRAIN_TYPES.ALTAR) {
                 result.needsPromotion = true;
             }
         }
 
         return result;
+    }
+
+    _handlePostCaptureEffects(piece, captured, result, fromCol, fromRow) {
+        if (piece.team === TEAMS.PLAYER) {
+            this.capturedByPlayer.push(captured);
+            this.goldEarned += this.captureResolver.getGoldValue(captured);
+        } else {
+            this.capturedByEnemy.push(captured);
+        }
+        this.turnManager.onCapture();
+
+        // Track capture in modifier system
+        if (this.modifierSystem) {
+            this.modifierSystem.onCapture(piece);
+        }
+
+        if (captured.type === PIECE_TYPES.KING) {
+            this.endBattle(piece.team);
+            result.kingCaptured = true;
+            return;
+        }
+
+        // Check 3-in-a-row capture relic
+        if (this.hasRelic('captureStreak') && this.turnManager.getConsecutiveCaptures() >= 3) {
+            this.turnManager.grantExtraTurn(1);
+            result.extraTurn = true;
+            this.turnManager.consecutiveCaptures = 0;
+        }
+
+        // Post-capture modifier effects
+        if (this.modifierSystem) {
+            const postCapture = this.modifierSystem.handlePostCapture(piece, captured);
+
+            if (postCapture.extraMove) {
+                this.turnManager.grantExtraTurn(1);
+                result.extraTurn = true;
+            }
+
+            if (postCapture.returnToStart) {
+                // Move piece back to starting square
+                result.captureRetreat = true;
+                result.retreatTo = { col: fromCol, row: fromRow };
+                const curTile = this.board.getTile(piece.col, piece.row);
+                const startTile = this.board.getTile(fromCol, fromRow);
+                if (startTile && startTile.isEmpty()) {
+                    curTile.removePiece();
+                    startTile.setPiece(piece);
+                }
+            }
+
+            if (postCapture.explode && postCapture.adjacentEnemies.length > 0) {
+                result.explosiveCapture = true;
+                const removed = this.captureResolver.resolveExplosion(piece, postCapture.adjacentEnemies);
+                result.explosionVictims = removed;
+                for (const enemy of removed) {
+                    if (piece.team === TEAMS.PLAYER) {
+                        this.capturedByPlayer.push(enemy);
+                        this.goldEarned += this.captureResolver.getGoldValue(enemy);
+                    } else {
+                        this.capturedByEnemy.push(enemy);
+                    }
+                    if (enemy.type === PIECE_TYPES.KING) {
+                        this.endBattle(piece.team);
+                        result.kingCaptured = true;
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     applyIceSlide(piece, dx, dy) {
@@ -220,6 +307,11 @@ export class CombatManager {
     }
 
     endTurn() {
+        // Consume rally flag at end of rally team's turn
+        if (this.modifierSystem) {
+            this.modifierSystem.consumeRally();
+        }
+
         // Unfreeze this team's pieces at start of their turn
         const currentPieces = this.board.getTeamPieces(this.turnManager.currentTeam);
         for (const p of currentPieces) {

@@ -20,6 +20,7 @@ import { VictoryState } from '../states/VictoryState.js';
 import { GameOverState } from '../states/GameOverState.js';
 import { PauseState } from '../states/PauseState.js';
 import { SettingsState } from '../states/SettingsState.js';
+import { UpgradeState } from '../states/UpgradeState.js';
 
 export class Game {
     constructor(canvas) {
@@ -55,6 +56,7 @@ export class Game {
             gameOver: new GameOverState(),
             pause: new PauseState(),
             settings: new SettingsState(),
+            upgrade: new UpgradeState(),
         };
 
         for (const [name, state] of Object.entries(states)) {
@@ -79,7 +81,12 @@ export class Game {
             if (data.victory) {
                 const rewards = this.runManager.onBattleWon(data);
                 this.saveManager.save(this.runManager.serialize());
-                this.stateMachine.change('map', { goldGained: data.goldEarned || 0 });
+                // Go to upgrade pack selection, then to map
+                this.stateMachine.change('upgrade', {
+                    nextState: 'map',
+                    nextParams: { goldGained: data.goldEarned || 0 },
+                    source: 'battle',
+                });
             } else {
                 // onBattleLost emits 'runEnded' which handles the state change
                 this.runManager.onBattleLost();
